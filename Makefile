@@ -10,7 +10,7 @@ default: all
 all: gups-simple gups-lru gups-lru-modified
 
 gups-nohemem: gups-nohemem.o 
-	$(CC) $(CFLAGS) $(INCLUDES) -o gups-nohemem gups-nohemem.o zipf.o timer.o $(LIBS) -L. -lpmem
+	$(CC) $(CFLAGS) $(INCLUDES) -o gups-nohemem gups-nohemem.o zipf.o timer.o $(LIBS) -L.
 
 gups-lru: gups.o libhemem-lru.so
 	$(CC) $(CFLAGS) $(INCLUDES) -o gups-lru gups.o zipf.o $(LIBS) -L. -lhemem-lru
