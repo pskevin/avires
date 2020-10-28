@@ -12,9 +12,9 @@
 #include <iostream>
 #include <fstream>
 #include "pin.H"
-
-#include "test.h"
-
+extern "C" {
+	#include "test.h"
+}
 using std::cerr;
 using std::ofstream;
 using std::ios;
