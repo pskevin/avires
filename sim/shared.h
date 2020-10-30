@@ -57,9 +57,9 @@
 #define SLOWMEM_MASK	(((uint64_t)1 << 63) - 1)
 
 #ifdef LOG_DEBUG
-#	define LOG(str, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
+#	define MEMSIM_LOG(str, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
 #else
-#	define LOG(std, ...)	while(0) {}
+#	define MEMSIM_LOG(std, ...)	while(0) {}
 #endif
 
 // Memory access type
