@@ -31,11 +31,9 @@
 #include <pthread.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include "timer.h"
-#include "hemem.h"
-
-
 #include "gups.h"
 
 #define MAX_THREADS	64
@@ -135,6 +133,17 @@ int main(int argc, char **argv)
   struct gups_args** ga;
   pthread_t t[MAX_THREADS];
 
+  pid_t pid = getpid();
+
+  printf("\npid: %d\n",  pid);
+  
+  argv[1]="1";
+  argv[2]="1000000";
+  argv[3]="33";
+  argv[4]="8";
+
+  argc = 5;
+
   if (argc != 5) {
     printf("Usage: %s [threads] [updates per thread] [exponent] [data size (bytes)] [noremap/remap]\n", argv[0]);
     printf("  threads\t\t\tnumber of threads to launch\n");
@@ -166,8 +175,8 @@ int main(int argc, char **argv)
 
   p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
-  gettimeofday(&stoptime, NULL);
-  printf("Init took %.4f seconds\n", elapsed(&starttime, &stoptime));
+  // gettimeofday(&stoptime, NULL);
+  // printf("Init took %.4f seconds\n", elapsed(&starttime, &stoptime));
   printf("Region address: %p\t size: %ld\n", p, size);
   //printf("Field addr: 0x%x\n", p);
 
@@ -197,17 +206,11 @@ int main(int argc, char **argv)
     //assert(r == 0);
   //}
 
-  gettimeofday(&stoptime, NULL);
-  secs = elapsed(&starttime, &stoptime);
-  printf("Initialization time: %.4f seconds.\n", secs);
-
   hot_start = 0;
   hotsize = nelems / 10;
   printf("hot_start: %lu\thot_size: %lu\n", hot_start, hotsize);
 
   printf("Timing.\n");
-  gettimeofday(&starttime, NULL);
-  hemem_clear_stats();
   // spawn gups worker threads
   for (i = 0; i < threads; i++) {
     //printf("starting thread [%d]\n", i);
@@ -215,8 +218,7 @@ int main(int argc, char **argv)
     ga[i]->iters = updates;
     ga[i]->size = nelems;
     ga[i]->elt_size = elt_size;
-    //printf("  tid: [%d]  iters: [%llu]  size: [%llu]  elt size: [%llu]\n", ga[i]->tid, ga[i]->iters, ga[i]->size, ga[i]->elt_size);
-    int r = pthread_create(&t[i], NULL, do_gups, (void*)ga[i]);
+     int r = pthread_create(&t[i], NULL, do_gups, (void*)ga[i]);
     assert(r == 0);
   }
 
@@ -225,12 +227,6 @@ int main(int argc, char **argv)
     int r = pthread_join(t[i], NULL);
     assert(r == 0);
   }
-  gettimeofday(&stoptime, NULL);
-  hemem_print_stats();
-  hemem_clear_stats();
-
-  secs = elapsed(&starttime, &stoptime);
-  printf("Elapsed time: %.4f seconds.\n", secs);
   gups = threads * ((double)updates) / (secs * 1.0e9);
   printf("GUPS = %.10f\n", gups);
 
@@ -239,7 +235,6 @@ int main(int argc, char **argv)
   printf("hot_start: %lu\thot_size: %lu\n", hot_start, hotsize);
 
   printf("Timing.\n");
-  gettimeofday(&starttime, NULL);
   
   // spawn gups worker threads
   for (i = 0; i < threads; i++) {
@@ -257,10 +252,6 @@ int main(int argc, char **argv)
     assert(r == 0);
   }
 
-  gettimeofday(&stoptime, NULL);
-
-  secs = elapsed(&starttime, &stoptime);
-  printf("Elapsed time: %.4f seconds.\n", secs);
   gups = threads * ((double)updates) / (secs * 1.0e9);
   printf("GUPS = %.10f\n", gups);
 #endif
@@ -272,8 +263,6 @@ int main(int argc, char **argv)
   free(ga);
   
   //munmap(p, size);
-
-  hemem_print_stats();
 
   return 0;
 }
