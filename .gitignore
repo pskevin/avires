@@ -1,4 +1,14 @@
-# mac
+# macOS
 .DS_Store
 
+# All object binaries
 *.o
+
+# Linked library [macOS]
+*.dylib 
+
+# Linked library [linux]
+*.so
+
+# Output files
+*.out
