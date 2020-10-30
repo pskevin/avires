@@ -20,6 +20,7 @@
 #include <semaphore.h>
 
 #include "memsim.h"
+#include "shared.h"
 
 #define LISTNUM_STATS
 
@@ -253,7 +254,7 @@ static void tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level)
   pthread_mutex_unlock(&tlb_lock);
 }
 
-static void memaccess(uint64_t addr, enum access_type type)
+void memaccess(uint64_t addr, enum access_type type)
 {
   int level;
 
@@ -284,7 +285,7 @@ static void memaccess(uint64_t addr, enum access_type type)
       }
 
       if(!pte->accessed && pte->pagemap && addr < 1048576 && (pte->addr & SLOWMEM_BIT)) {
-      	LOG("[%s in SLOWMEM vaddr 0x%" PRIx64 ", pt %u], paddr 0x%" PRIx64 "\n",
+      	MEMSIM_LOG("[%s in SLOWMEM vaddr 0x%" PRIx64 ", pt %u], paddr 0x%" PRIx64 "\n",
       	    type == TYPE_WRITE ? "MODIFIED" : "ACCESSED",
       	    addr & pfn_mask(level - 2), level - 2, pte->addr);
       }
@@ -361,7 +362,7 @@ static void gups(size_t iters, uint64_t hotset_start, uint64_t hotset_size,
 {
   assert(hotset_start + hotset_size <= workset_size);
 
-  LOG("gups(iters = %zu, hotset_start = 0x%" PRIx64 ", hotset_size = 0x%" PRIx64 ", hotset_prob = %.2f, workset_size = 0x%" PRIx64 ")\n",
+  MEMSIM_LOG("gups(iters = %zu, hotset_start = 0x%" PRIx64 ", hotset_size = 0x%" PRIx64 ", hotset_prob = %.2f, workset_size = 0x%" PRIx64 ")\n",
       iters, hotset_start, hotset_size, hotset_prob, workset_size);
 
   // GUPS with hotset
@@ -386,7 +387,7 @@ static void gups(size_t iters, uint64_t hotset_start, uint64_t hotset_size,
 
 static void reset_stats(void)
 {
-  LOG("--- reset_stats ---\n");
+  MEMSIM_LOG("--- reset_stats ---\n");
 
   last_time = runtime;
   accesses[FASTMEM] = accesses[SLOWMEM] = 0;
@@ -413,55 +414,55 @@ static void print_stats(void)
 #endif
 }
 
-int main(int argc, char *argv[])
-{
-  if(argc < 2) {
-    printf("Usage: %s HOTSET-SIZE\n", argv[0]);
-    exit(EXIT_FAILURE);
-  }
+// int main(int argc, char *argv[])
+// {
+//   if(argc < 2) {
+//     printf("Usage: %s HOTSET-SIZE\n", argv[0]);
+//     exit(EXIT_FAILURE);
+//   }
 
-  progname = argv[0];
-  uint64_t hotset_size = atoll(argv[1]);
+//   progname = argv[0];
+//   uint64_t hotset_size = atoll(argv[1]);
 
-#ifdef MMM
-  LOG("Allocating %.2f GB for MMM tags\n",
-	  (float)MMM_TAGS_SIZE / GIGA_PAGE_SIZE);
-  mmm_tags = calloc(MMM_TAGS_SIZE, sizeof(uint64_t));
-  assert(mmm_tags != NULL);
-  // Clear MMM tags
-  for(size_t i = 0; i < MMM_TAGS_SIZE; i++) {
-    mmm_tags[i] = (uint64_t)-1;
-  }
-#endif
+// #ifdef MMM
+//   MEMSIM_LOG("Allocating %.2f GB for MMM tags\n",
+// 	  (float)MMM_TAGS_SIZE / GIGA_PAGE_SIZE);
+//   mmm_tags = calloc(MMM_TAGS_SIZE, sizeof(uint64_t));
+//   assert(mmm_tags != NULL);
+//   // Clear MMM tags
+//   for(size_t i = 0; i < MMM_TAGS_SIZE; i++) {
+//     mmm_tags[i] = (uint64_t)-1;
+//   }
+// #endif
 
-  int r = sem_init(&wakeup_sem, 0, 0);
-  assert(r == 0);
-  r = sem_init(&timebound_sem, 0, 0);
-  assert(r == 0);
+//   int r = sem_init(&wakeup_sem, 0, 0);
+//   assert(r == 0);
+//   r = sem_init(&timebound_sem, 0, 0);
+//   assert(r == 0);
   
-  mmgr_init();
+//   mmgr_init();
 
-  LOG("[START] FASTMEM_SIZE = %.2f GB, SLOWMEM_SIZE = %.2f GB\n",
-      FASTMEM_SIZE / (float)GB(1), SLOWMEM_SIZE / (float)GB(1));
+//   MEMSIM_LOG("[START] FASTMEM_SIZE = %.2f GB, SLOWMEM_SIZE = %.2f GB\n",
+//       FASTMEM_SIZE / (float)GB(1), SLOWMEM_SIZE / (float)GB(1));
 
-  // Fault all pages in
-  LOG("Faulting %" PRIu64 " base pages in\n", WORKSET_SIZE / BASE_PAGE_SIZE);
-  for(uint64_t a = 0; a < WORKSET_SIZE; a += BASE_PAGE_SIZE) {
-    memaccess(a, TYPE_READ);
-  }
-  reset_stats();
+//   // Fault all pages in
+//   MEMSIM_LOG("Faulting %" PRIu64 " base pages in\n", WORKSET_SIZE / BASE_PAGE_SIZE);
+//   for(uint64_t a = 0; a < WORKSET_SIZE; a += BASE_PAGE_SIZE) {
+//     memaccess(a, TYPE_READ);
+//   }
+//   reset_stats();
 
-  // GUPS!
-  gups(10000000, 0, hotset_size, 0.9, WORKSET_SIZE);
-  print_stats();
-  reset_stats();
+//   // GUPS!
+//   gups(10000000, 0, hotset_size, 0.9, WORKSET_SIZE);
+//   print_stats();
+//   reset_stats();
 
-  // Move hotset up
-  gups(10000000, WORKSET_SIZE - hotset_size, hotset_size, 0.9, WORKSET_SIZE);
+//   // Move hotset up
+//   gups(10000000, WORKSET_SIZE - hotset_size, hotset_size, 0.9, WORKSET_SIZE);
 
-  print_stats();
-#ifdef LISTNUM_STATS
-  listnum(NULL);
-#endif
-  return 0;
-}
+//   print_stats();
+// #ifdef LISTNUM_STATS
+//   listnum(NULL);
+// #endif
+//   return 0;
+// }

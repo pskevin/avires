@@ -82,7 +82,7 @@ $(OBJDIR)test$(OBJ_SUFFIX): test.c
 
 # Build the intermediate object file.
 $(OBJDIR)memsim$(OBJ_SUFFIX): memsim.c
-	$(CC) $(COMP_OBJ)$@ $<
+	$(CC) -fPIC -pthread $(COMP_OBJ)$@ $<
 
 # Build the tool as a dll (shared object).
 $(OBJDIR)mem_trace$(PINTOOL_SUFFIX): $(OBJDIR)mem_trace$(OBJ_SUFFIX) $(OBJDIR)memsim$(OBJ_SUFFIX)

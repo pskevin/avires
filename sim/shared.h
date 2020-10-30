@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <assert.h>
 
 // Handy size macros
 #define KB(x)		(((uint64_t)x) * 1024)
@@ -61,12 +62,6 @@
 #else
 #	define MEMSIM_LOG(std, ...)	while(0) {}
 #endif
-
-// Memory access type
-enum access_type {
-  TYPE_READ,
-  TYPE_WRITE,
-};
 
 enum memtypes {
   FASTMEM = 0,
