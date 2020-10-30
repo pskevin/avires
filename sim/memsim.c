@@ -19,7 +19,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include "shared.h"
+#include "memsim.h"
 
 #define LISTNUM_STATS
 
@@ -33,12 +33,6 @@ static size_t		last_time = 0;
 static const char	*progname = NULL;
 _Atomic size_t		memsim_timebound = 0;
 __thread bool		memsim_timebound_thread = false;
-
-// Hardware 2-level TLB emulating Cascade Lake
-struct tlbe {
-  uint64_t	vpfn, ppfn;
-  bool		present, hugepage;
-};
 
 static struct tlbe l1tlb_1g[4], l1tlb_2m[32], l1tlb_4k[64];
 static struct tlbe l2tlb_1g[16], l2tlb_2m4k[1536];

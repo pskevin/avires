@@ -13,7 +13,7 @@
 #include <fstream>
 #include "pin.H"
 extern "C" {
-	#include "test.h"
+	#include "memsim.h"
 }
 using std::cerr;
 using std::ofstream;
@@ -29,7 +29,7 @@ ofstream OutFile;
 static UINT64 icount = 0;
 
 // This function is called before every instruction is executed
-VOID docount() { icount = add_count(icount); }
+VOID docount() { icount++; }
     
 // Pin calls this function every time a new instruction is encountered
 VOID Instruction(INS ins, VOID *v)
