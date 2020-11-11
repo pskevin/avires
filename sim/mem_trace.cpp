@@ -12,10 +12,11 @@
 #include <iostream>
 
 #include "pin.H"
+// #include <cassert>
 
-extern "C" {
-	#include "memsim.h"
-}
+#include "memsim_new.h"
+#include "memory_manager.h"
+#include "mmgr_simple.h"
 
 using std::cerr;
 using std::ofstream;
@@ -24,16 +25,18 @@ using std::string;
 using std::endl;
 
 
+MemorySimulator sim;
+
 // Print a memory read record
 VOID RecordMemRead(VOID * ip, uint64_t addr)
 {
-    memaccess(addr, TYPE_READ);
+    sim.memaccess(addr, TYPE_READ);
 }
 
 // Print a memory write record
 VOID RecordMemWrite(VOID * ip, uint64_t addr)
 {
-    memaccess(addr, TYPE_WRITE);
+    sim.memaccess(addr, TYPE_WRITE);
 }
 // Pin calls this function every time a new instruction is encountered
 VOID Instruction(INS ins, VOID *v)
@@ -93,6 +96,12 @@ INT32 Usage()
 
 int main(int argc, char * argv[])
 {
+    
+    sim = MemorySimulator();
+    SimpleMemoryManager* mgr = new SimpleMemoryManager();
+    sim.setMemoryManager(mgr);
+    mgr->init(sim);
+
     // Initialize pin
     if (PIN_Init(argc, argv)) return Usage();
 
@@ -104,6 +113,6 @@ int main(int argc, char * argv[])
     
     // Start the program, never returns
     PIN_StartProgram();
-    
+
     return 0;
 }

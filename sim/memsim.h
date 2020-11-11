@@ -14,6 +14,9 @@ struct tlbe {
   bool		present, hugepage;
 };
 
-void memaccess(uint64_t addr, enum access_type type);
+namespace memsim {
+  void memaccess(uint64_t addr, enum access_type type);
+}
+
 
 #endif
