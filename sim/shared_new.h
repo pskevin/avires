@@ -1,11 +1,10 @@
-#ifndef SHARED_H
-#define SHARED_H
-
-#include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include <atomic>
+#include <stddef.h>
+// #include <atomic>
 #include <assert.h>
+
+#ifndef MEMSIM_SHARED_H
+#define MEMSIM_SHARED_H
 
 // Handy size macros
 #define KB(x)		(((uint64_t)x) * 1024)
@@ -70,56 +69,40 @@ enum memtypes {
 };
 
 enum pagetypes {
-  GIGA = 0,
-  HUGE,
-  BASE,
+  GIGA_PAGE = 0,
+  HUGE_PAGE,
+  BASE_PAGE,
   NPAGETYPES
 };
 
-// Page table entry
-struct pte {
+typedef struct pte {
   // Hardware bits
   uint64_t addr;			// Page physical address, if pagemap
   struct pte *next;			// Next page table pointer, if !pagemap
-  std::atomic<bool> present;
-  std::atomic<bool> readonly;
-  std::atomic<bool> accessed;
-  std::atomic<bool> modified;
-  std::atomic<bool> pagemap;			// This PTE maps a page
+  
+  // these bools should be "atomic"
+  bool present;
+  bool readonly;
+  bool accessed;
+  bool modified;
+  bool pagemap;			// This PTE maps a page
 
   // OS bits (16 bits available)
-  std::atomic<bool> migration;		// Range is under migration
-  std::atomic<bool> all_slow;		// All in slowmem
+  bool migration;		// Range is under migration
+  bool all_slow;		// All in slowmem
 
   // Statistics
   size_t ups, downs;
-};
+} pte;
 
 typedef void (*PerfCallback)(uint64_t addr);
-
-// // readonly is set if the page was a write to a read-only
-// // page. Otherwise, it was any access to a non-present page.
-// void pagefault(uint64_t addr, bool readonly);
-// void tlb_shootdown(uint64_t addr);
-// void mmgr_init(void);
-// void add_runtime(size_t delta);
-// void memsim_nanosleep(size_t sleeptime);
-// void perf_register(PerfCallback callback, size_t limit);
-
-// // XXX: Debug
-// int listnum(struct pte *pte);
-
-// // extern std::atomic<size_t> runtime;
-// // extern struct pte *cr3;
-// // extern std::atomic<size_t> memsim_timebound;
-// extern __thread bool memsim_timebound_thread;
 
 static inline uint64_t page_size(enum pagetypes pt)
 {
   switch(pt) {
-  case GIGA: return GIGA_PAGE_SIZE;
-  case HUGE: return HUGE_PAGE_SIZE;
-  case BASE: return BASE_PAGE_SIZE;
+  case GIGA_PAGE: return GIGA_PAGE_SIZE;
+  case HUGE_PAGE: return HUGE_PAGE_SIZE;
+  case BASE_PAGE: return BASE_PAGE_SIZE;
   default: assert(!"Unknown page type");
   }
 }
@@ -127,9 +110,9 @@ static inline uint64_t page_size(enum pagetypes pt)
 static inline uint64_t pfn_mask(enum pagetypes pt)
 {
   switch(pt) {
-  case GIGA: return GIGA_PFN_MASK;
-  case HUGE: return HUGE_PFN_MASK;
-  case BASE: return BASE_PFN_MASK;
+  case GIGA_PAGE: return GIGA_PFN_MASK;
+  case HUGE_PAGE: return HUGE_PFN_MASK;
+  case BASE_PAGE: return BASE_PFN_MASK;
   default: assert(!"Unknown page type");
   }
 }
@@ -137,11 +120,12 @@ static inline uint64_t pfn_mask(enum pagetypes pt)
 static inline uint64_t page_mask(enum pagetypes pt)
 {
   switch(pt) {
-  case GIGA: return GIGA_PAGE_MASK;
-  case HUGE: return HUGE_PAGE_MASK;
-  case BASE: return BASE_PAGE_MASK;
+  case GIGA_PAGE: return GIGA_PAGE_MASK;
+  case HUGE_PAGE: return HUGE_PAGE_MASK;
+  case BASE_PAGE: return BASE_PAGE_MASK;
   default: assert(!"Unknown page type");
   }
 }
+
 
 #endif
