@@ -18,12 +18,12 @@ uint64_t SimpleMemoryManager::getmem(uint64_t addr, struct pte *pte)
     ret = fastmem;
     fastmem += page_size(PAGE_TYPE);
   } else {
-    // assert(slowmem < SLOWMEM_SIZE);
+    assert(slowmem < SLOWMEM_SIZE);
     ret = slowmem | SLOWMEM_BIT;
     slowmem += page_size(PAGE_TYPE);
   }
 
-  // assert((ret & page_mask(PAGE_TYPE)) == 0);	// Must be aligned
+  assert((ret & page_mask(PAGE_TYPE)) == 0);	// Must be aligned
   return ret;
 }
 

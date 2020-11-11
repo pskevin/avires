@@ -41,12 +41,12 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
       }
       pte->accessed = true;
       if(type == TYPE_WRITE) {
-  pte->modified = true;
+        pte->modified = true;
       }
 
       if(pte->pagemap) {
-  // Page here -- terminate walk
-  break;
+        // Page here -- terminate walk
+        break;
       }
       
       ptable = pte->next;
@@ -156,19 +156,18 @@ tlbe* MemorySimulator::alltlb_lookup(uint64_t vaddr, int* level) {
 
 tlbe* MemorySimulator::tlb_lookup(struct tlbe *tlb, unsigned int size, uint64_t vpfn)
 {
-  // tlbe *ret;
+  tlbe *ret;
   
-  // pthread_mutex_lock(&tlb_lock);
-  // struct tlbe *te = &tlb[tlb_hash(vpfn) % size];
-  // if(te->present && te->vpfn == vpfn) {
-  //   ret = te;
-  // } else {
-    // ret = NULL;
-  // }
+  PIN_MutexLock(&tlb_lock);
+  struct tlbe *te = &tlb[tlb_hash(vpfn) % size];
+  if(te->present && te->vpfn == vpfn) {
+    ret = te;
+  } else {
+    ret = NULL;
+  }
 
-  // pthread_mutex_unlock(&tlb_lock);
-  // return ret;
-  return nullptr;
+  PIN_MutexUnlock(&tlb_lock);
+  return ret;
 }
 
 void MemorySimulator::add_runtime(size_t delta) {
@@ -197,52 +196,52 @@ void MemorySimulator::add_runtime(size_t delta) {
 
 void MemorySimulator::tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level)
 {
-//   struct tlbe *te;
-//   uint64_t vpfn = 0, ppfn = 0;
+  struct tlbe *te;
+  uint64_t vpfn = 0, ppfn = 0;
 
-//   assert(level >= 2 && level <= 4);
+  assert(level >= 2 && level <= 4);
 
-//   pthread_mutex_lock(&tlb_lock);
+  PIN_MutexLock(&tlb_lock);
 
-//   switch(level) {
-//   case 2:	// 1GB page
-//     vpfn = vaddr & GIGA_PFN_MASK;
-//     ppfn = paddr & GIGA_PFN_MASK;
-//     te = &l1tlb_1g[tlb_hash(vpfn) % 4];
-//     if(te->present) {
-//       // Move previous entry down
-//       assert(te->vpfn != vpfn);
-//       memcpy(&l2tlb_1g[tlb_hash(vpfn) % 16], te, sizeof(struct tlbe));
-//     }
-//     break;
+  switch(level) {
+  case 2:	// 1GB page
+    vpfn = vaddr & GIGA_PFN_MASK;
+    ppfn = paddr & GIGA_PFN_MASK;
+    te = &l1tlb_1g[tlb_hash(vpfn) % 4];
+    if(te->present) {
+      // Move previous entry down
+      assert(te->vpfn != vpfn);
+      memcpy(&l2tlb_1g[tlb_hash(vpfn) % 16], te, sizeof(struct tlbe));
+    }
+    break;
 
-//   case 3:	// 2MB page
-//     vpfn = vaddr & HUGE_PFN_MASK;
-//     ppfn = paddr & HUGE_PFN_MASK;
-//     te = &l1tlb_2m[tlb_hash(vpfn) % 32];
-//     te->hugepage = true;
+  case 3:	// 2MB page
+    vpfn = vaddr & HUGE_PFN_MASK;
+    ppfn = paddr & HUGE_PFN_MASK;
+    te = &l1tlb_2m[tlb_hash(vpfn) % 32];
+    te->hugepage = true;
 
-//     // Fall through...
-//   case 4:	// 4KB page
-//     if(level == 4) {
-//       vpfn = vaddr & BASE_PFN_MASK;
-//       ppfn = paddr & BASE_PFN_MASK;
-//       te = &l1tlb_4k[tlb_hash(vpfn) % 64];
-//       te->hugepage = false;
-//     }
-//     if(te->present) {
-//       // Move previous entry down
-//       assert(te->vpfn != vpfn);
-//       memcpy(&l2tlb_2m4k[tlb_hash(vpfn) % 1536], te, sizeof(struct tlbe));
-//     }
-//     break;
-//   }
+    // Fall through...
+  case 4:	// 4KB page
+    if(level == 4) {
+      vpfn = vaddr & BASE_PFN_MASK;
+      ppfn = paddr & BASE_PFN_MASK;
+      te = &l1tlb_4k[tlb_hash(vpfn) % 64];
+      te->hugepage = false;
+    }
+    if(te->present) {
+      // Move previous entry down
+      assert(te->vpfn != vpfn);
+      memcpy(&l2tlb_2m4k[tlb_hash(vpfn) % 1536], te, sizeof(struct tlbe));
+    }
+    break;
+  }
 
-//   te->present = true;
-//   te->vpfn = vpfn;
-//   te->ppfn = ppfn;
+  te->present = true;
+  te->vpfn = vpfn;
+  te->ppfn = ppfn;
   
-//   pthread_mutex_unlock(&tlb_lock);
+  PIN_MutexUnlock(&tlb_lock);
 }
 
 void MemorySimulator::setCR3(pte* ptr) {

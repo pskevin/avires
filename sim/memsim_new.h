@@ -29,13 +29,14 @@ class MemorySimulator {
   MemorySimulator() {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
+    PIN_MutexInit(&tlb_lock);
   }
   
   private:
     tlbe *alltlb_lookup(uint64_t vaddr, int *level);
     tlbe *tlb_lookup(uint64_t vaddr, int *level);
     tlbe *tlb_lookup(struct tlbe *tlb, unsigned int size,
-			       uint64_t vpfn);
+            uint64_t vpfn);
     void add_runtime(size_t delta);
     void tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level);
 
@@ -53,6 +54,7 @@ class MemorySimulator {
     PerfCallback perf_callback = NULL;
     
     PIN_SEMAPHORE wakeup_sem, timebound_sem;
+    PIN_MUTEX tlb_lock;
 
     pte* cr3;
     MemoryManager* mmgr_;
@@ -60,5 +62,28 @@ class MemorySimulator {
     tlbe l1tlb_1g[4], l1tlb_2m[32], l1tlb_4k[64];
     tlbe l2tlb_1g[16], l2tlb_2m4k[1536];
 };
+
+// From Wikipedia
+static uint32_t jenkins_one_at_a_time_hash(const uint8_t *key, size_t length) {
+  size_t i = 0;
+  uint32_t hash = 0;
+
+  while (i != length) {
+    hash += key[i++];
+    hash += hash << 10;
+    hash ^= hash >> 6;
+  }
+  
+  hash += hash << 3;
+  hash ^= hash >> 11;
+  hash += hash << 15;
+  
+  return hash;
+}
+
+inline unsigned int tlb_hash(uint64_t addr)
+{
+  return jenkins_one_at_a_time_hash((uint8_t *)&addr, sizeof(uint64_t));
+}
 
 #endif

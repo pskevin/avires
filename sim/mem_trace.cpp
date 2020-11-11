@@ -24,7 +24,6 @@ using std::ios;
 using std::string;
 using std::endl;
 
-
 MemorySimulator sim;
 
 // Print a memory read record
@@ -38,6 +37,7 @@ VOID RecordMemWrite(VOID * ip, uint64_t addr)
 {
     sim.memaccess(addr, TYPE_WRITE);
 }
+
 // Pin calls this function every time a new instruction is encountered
 VOID Instruction(INS ins, VOID *v)
 {
@@ -95,8 +95,7 @@ INT32 Usage()
 /* ===================================================================== */
 
 int main(int argc, char * argv[])
-{
-    
+{  
     sim = MemorySimulator();
     SimpleMemoryManager* mgr = new SimpleMemoryManager();
     sim.setMemoryManager(mgr);
