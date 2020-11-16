@@ -12,3 +12,6 @@
 
 # Output files
 *.out
+
+# Part files
+*.part
