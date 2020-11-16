@@ -21,7 +21,7 @@
 #define INDEX_FILE "logs/indices.txt"
 
 //#define ZIPFIAN
-#define HOTSPOT
+// #define HOTSPOT
 //#define UNIFORM_RANDOM
 
 void calc_indices(unsigned long* indices, unsigned long updates, unsigned long nelems);

@@ -175,10 +175,10 @@ int main(int argc, char **argv)
 
   p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
-  // gettimeofday(&stoptime, NULL);
-  // printf("Init took %.4f seconds\n", elapsed(&starttime, &stoptime));
+  gettimeofday(&stoptime, NULL);
+  printf("Init took %.4f seconds\n", elapsed(&starttime, &stoptime));
   printf("Region address: %p\t size: %ld\n", p, size);
-  //printf("Field addr: 0x%x\n", p);
+  printf("Field addr: 0x%x\n", p);
 
   nelems = (size / threads) / elt_size; // number of elements per thread
   printf("Elements per thread: %lu\n", nelems);
@@ -263,6 +263,7 @@ int main(int argc, char **argv)
   free(ga);
   
   //munmap(p, size);
-
+  int testInteger;
+  scanf("%d", &testInteger);  
   return 0;
 }
