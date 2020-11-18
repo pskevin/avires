@@ -6,7 +6,7 @@
 
 #ifndef MEMSIM_H
 #define MEMSIM_H
-class MemoryManager;
+
 using namespace std;
 // Memory access type
 typedef enum access_type {
@@ -20,25 +20,46 @@ typedef struct tlbe {
   bool		present, hugepage;
 } tlbe;
 
+// Software cache entry;
+typedef struct cacheentry {
+  uint64_t	vpfn, ppfn;
+  bool  present;
+} cacheentry;
+
+class MemorySimulator;
+
+class MemoryManager {
+  public:
+    virtual uint64_t getmem(uint64_t addr, pte *pte);
+    virtual pte *alloc_ptables(uint64_t addr, enum pagetypes pt);
+    virtual void pagefault(uint64_t addr, bool readonly);
+    virtual int listnum(pte* pte);
+    virtual void init(MemorySimulator& sim);
+};
+
+class TLB {
+  public:
+    virtual tlbe *alltlb_lookup(uint64_t vaddr, int *level);
+    virtual void tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level);
+};
+
+class CacheManager {
+  public:
+    virtual cacheentry* cache_lookup(uint64_t vaddr, int *level);
+};
+
 class MemorySimulator {
   public:
     void memaccess(uint64_t addr, memory_access_type type);
-    void setMemoryManager(MemoryManager* mmgr);
     void setCR3(pte* ptr);
     
-  MemorySimulator() {
+  MemorySimulator(MemoryManager* mgr, TLB* tlb) : mmgr_(mgr), tlb_(tlb), cache_(NULL) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
-    PIN_MutexInit(&tlb_lock);
   }
   
   private:
-    tlbe *alltlb_lookup(uint64_t vaddr, int *level);
-    tlbe *tlb_lookup(uint64_t vaddr, int *level);
-    tlbe *tlb_lookup(struct tlbe *tlb, unsigned int size,
-            uint64_t vpfn);
     void add_runtime(size_t delta);
-    void tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level);
 
     size_t tlbmisses = 0;
     size_t tlbhits = 0;
@@ -54,13 +75,11 @@ class MemorySimulator {
     PerfCallback perf_callback = NULL;
     
     PIN_SEMAPHORE wakeup_sem, timebound_sem;
-    PIN_MUTEX tlb_lock;
 
     pte* cr3;
     MemoryManager* mmgr_;
-
-    tlbe l1tlb_1g[4], l1tlb_2m[32], l1tlb_4k[64];
-    tlbe l2tlb_1g[16], l2tlb_2m4k[1536];
+    TLB* tlb_;
+    CacheManager* cache_;
 };
 
 // From Wikipedia

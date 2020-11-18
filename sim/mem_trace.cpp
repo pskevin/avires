@@ -16,7 +16,7 @@
 #include <unordered_map>
 
 #include "memsim_new.h"
-#include "memory_manager.h"
+#include "four_level_tlb.h"
 #include "mmgr_simple.h"
 
 std::unordered_map<uint64_t, int> hashmap;
@@ -27,19 +27,19 @@ using std::ios;
 using std::string;
 using std::endl;
 
-MemorySimulator sim;
+MemorySimulator* sim;
 
 // Print a memory read record
 VOID RecordMemRead(VOID * ip, uint64_t addr)
 {
-    sim.memaccess(addr, TYPE_READ);
+    sim->memaccess(addr, TYPE_READ);
     hashmap[addr]++;
 }
 
 // Print a memory write record
 VOID RecordMemWrite(VOID * ip, uint64_t addr)
 {
-    sim.memaccess(addr, TYPE_WRITE);
+    sim->memaccess(addr, TYPE_WRITE);
     hashmap[addr]++;
 }
 
@@ -118,10 +118,10 @@ INT32 Usage()
 
 int main(int argc, char * argv[])
 {  
-    sim = MemorySimulator();
     SimpleMemoryManager* mgr = new SimpleMemoryManager();
-    sim.setMemoryManager(mgr);
-    mgr->init(sim);
+    FourLevelTLB* tlb = new FourLevelTLB();
+    sim = new MemorySimulator(mgr, tlb);
+    mgr->init(*sim);
 
     // Initialize pin
     if (PIN_Init(argc, argv)) return Usage();
