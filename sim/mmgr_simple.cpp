@@ -4,8 +4,8 @@
  */
 
 #include "shared_new.h"
-#include "memory_manager.h"
 #include "mmgr_simple.h"
+#include "memsim_new.h"
 #include <stdlib.h>
 
 #define PAGE_TYPE	GIGA_PAGE
@@ -46,7 +46,6 @@ pte * SimpleMemoryManager::alloc_ptables(uint64_t addr, enum pagetypes pt)
   // Return last-level PTE corresponding to addr
   return &ptable[(addr >> (48 - ((pt + 2) * 9))) & 511];
 }
-
 
 void SimpleMemoryManager::pagefault(uint64_t addr, bool readonly)
 {

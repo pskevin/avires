@@ -1,5 +1,4 @@
-
-#include "memory_manager.h"
+#include "memsim_new.h"
 
 class SimpleMemoryManager: public MemoryManager {
   public:
