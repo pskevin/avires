@@ -3,6 +3,8 @@
 #include <iostream>
 #include "pin.H"
 
+
+
 void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
 {
   int level = -1;
@@ -10,7 +12,6 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
   // Must be canonical addr
   assert((addr >> 48) == 0);
 
-  // In TLB?
   struct tlbe *te = NULL;
   uint64_t paddr = 0;
   if((te = tlb_->alltlb_lookup(addr, &level)) != NULL) {
@@ -23,44 +24,8 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
       // handle this case once we add caches
       // paddr = something
     } else {
-        // 4-level page walk
-        assert(cr3 != NULL);
-        struct pte *ptable = cr3, *pte = NULL;
-
-        for(level = 1; level <= 4 && ptable != NULL; level++) {
-          pte = &ptable[(addr >> (48 - (level * 9))) & 511];
-
-          add_runtime(TIME_PAGEWALK);
-
-          if(!pte->present || (pte->readonly && type == TYPE_WRITE)) {
-            mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
-            add_runtime(TIME_PAGEFAULT);
-            pagefaults++;
-            assert(pte->present);
-            assert(!pte->readonly || type != TYPE_WRITE);
-          }
-
-          if(!pte->accessed && pte->pagemap && addr < 1048576 && (pte->addr & SLOWMEM_BIT)) {
-            MEMSIM_LOG("[%s in SLOWMEM vaddr 0x%" PRIx64 ", pt %u], paddr 0x%" PRIx64 "\n",
-                type == TYPE_WRITE ? "MODIFIED" : "ACCESSED",
-                addr & pfn_mask(level - 2), level - 2, pte->addr);
-          }
-          pte->accessed = true;
-          if(type == TYPE_WRITE) {
-            pte->modified = true;
-          }
-
-          if(pte->pagemap) {
-            // Page here -- terminate walk
-            break;
-          }
-          
-          ptable = pte->next;
-      }
-
-      assert(pte != NULL);
+      paddr = walk_page_table(addr, type, level);
       assert(level >= 2 && level <= 4);
-      paddr = pte->addr + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
 
     assert(paddr != 0);
@@ -69,12 +34,12 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
     tlb_->tlb_insert(addr, paddr, level);
   }
 
+  // Pay the cost of accessing the memory (conditional on the type of memory)
   if(type == TYPE_READ) {
     add_runtime((paddr & SLOWMEM_BIT) ? TIME_SLOWMEM_READ : TIME_FASTMEM_READ);
   } else {
     add_runtime((paddr & SLOWMEM_BIT) ? TIME_SLOWMEM_WRITE : TIME_FASTMEM_WRITE);
   }
-
   accesses[(paddr & SLOWMEM_BIT) ? SLOWMEM : FASTMEM]++;
 
   // Performance counters
@@ -85,6 +50,48 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
       perf_callback(addr);
     }
   }
+}
+
+// 4-level page walk
+uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type, int &level)
+{
+  assert(cr3 != NULL);
+  struct pte *ptable = cr3, *pte = NULL;
+
+  for(level = 1; level <= 4 && ptable != NULL; level++) {
+    pte = &ptable[(addr >> (48 - (level * 9))) & 511];
+
+    add_runtime(TIME_PAGEWALK);
+    if(!pte->present || (pte->readonly && type == TYPE_WRITE)) {
+      mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
+      add_runtime(TIME_PAGEFAULT);
+      pagefaults++;
+      assert(pte->present);
+      assert(!pte->readonly || type != TYPE_WRITE);
+    }
+
+    // printf("HERE %d %d %lu\n", !pte->accessed, pte->pagemap, pte->accessed & SLOWMEM_BIT);
+    if(!pte->accessed && pte->pagemap && (pte->addr & SLOWMEM_BIT)) {
+      MEMSIM_LOG("[%s in SLOWMEM vaddr 0x%" PRIx64 ", pt %u], paddr 0x%" PRIx64 "\n",
+          type == TYPE_WRITE ? "MODIFIED" : "ACCESSED",
+          addr & pfn_mask((pagetypes)(level - 2)), level - 2, pte->addr);
+    }
+    
+    pte->accessed = true;
+    if(type == TYPE_WRITE) {
+      pte->modified = true;
+    }
+
+    if(pte->pagemap) {
+      // Page here -- terminate walk
+      break;
+    }
+    
+    ptable = pte->next;
+  }
+  
+  assert(pte != NULL);
+  return pte->addr + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
 }
 
 void MemorySimulator::add_runtime(size_t delta) {

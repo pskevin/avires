@@ -263,7 +263,7 @@ int main(int argc, char **argv)
   free(ga);
   
   //munmap(p, size);
-  int testInteger;
-  scanf("%d", &testInteger);  
+  // int testInteger;
+  // scanf("%d", &testInteger);  
   return 0;
 }

@@ -1,1 +1,0 @@
-mmgr_simple.c

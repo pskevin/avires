@@ -59,6 +59,7 @@ class MemorySimulator {
   }
   
   private:
+    uint64_t walk_page_table(uint64_t addr, memory_access_type type, int &level);
     void add_runtime(size_t delta);
 
     size_t tlbmisses = 0;

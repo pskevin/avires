@@ -2,6 +2,7 @@
 #include <stddef.h>
 // #include <atomic>
 #include <assert.h>
+#include "inttypes.h"
 
 #ifndef MEMSIM_SHARED_H
 #define MEMSIM_SHARED_H
@@ -33,7 +34,7 @@
 #define GIGA_PFN_MASK	(GIGA_PAGE_MASK ^ UINT64_MAX)
 
 // Physical memory sizes in bytes
-#define FASTMEM_SIZE	GB(42)
+#define FASTMEM_SIZE	MB(4)
 #define SLOWMEM_SIZE	GB(512)
 #define CACHELINE_SIZE	64
 #define MMM_LINE_SIZE	256
@@ -55,6 +56,8 @@
 // Fake offset for slowmem in physical memory
 #define SLOWMEM_BIT	((uint64_t)1 << 63)
 #define SLOWMEM_MASK	(((uint64_t)1 << 63) - 1)
+
+#define LOG_DEBUG
 
 #ifdef LOG_DEBUG
 #	define MEMSIM_LOG(str, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
