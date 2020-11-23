@@ -13,6 +13,7 @@ class FourLevelTLB : public TLB {
     tlbe *tlb_lookup(struct tlbe *tlb, unsigned int size,
             uint64_t vpfn);
     void tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level);
+    void shootdown(uint64_t addr);
 
   private:
     PIN_MUTEX tlb_lock;

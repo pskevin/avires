@@ -3,8 +3,6 @@
 #include <iostream>
 #include "pin.H"
 
-
-
 void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
 {
   int level = -1;
@@ -22,9 +20,10 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type)
     struct cacheentry *ce = NULL;
     if (cache_ != NULL && (ce = cache_->cache_lookup(addr, &level)) != NULL) {
       // handle this case once we add caches
-      // paddr = something
+      // paddr = ce->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     } else {
       paddr = walk_page_table(addr, type, level);
+      // cache_->cache_insert(addr);
       assert(level >= 2 && level <= 4);
     }
 
@@ -73,6 +72,7 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
     // printf("HERE %d %d %lu\n", !pte->accessed, pte->pagemap, pte->accessed & SLOWMEM_BIT);
     if(!pte->accessed && pte->pagemap && (pte->addr & SLOWMEM_BIT)) {
       MEMSIM_LOG("[%s in SLOWMEM vaddr 0x%" PRIx64 ", pt %u], paddr 0x%" PRIx64 "\n",
+          runtime,
           type == TYPE_WRITE ? "MODIFIED" : "ACCESSED",
           addr & pfn_mask((pagetypes)(level - 2)), level - 2, pte->addr);
     }
@@ -117,6 +117,28 @@ void MemorySimulator::add_runtime(size_t delta) {
   }
 #endif
 }
+
+void MemorySimulator::tlb_shootdown(uint64_t addr)
+{
+  tlb_->shootdown(addr);
+  add_runtime(TIME_TLBSHOOTDOWN);
+  tlbshootdowns++;
+}
+
+void MemorySimulator::memsim_nanosleep(size_t sleeptime)
+{
+  if(memsim_timebound != 0) {
+    assert(memsim_timebound_thread == true);
+    memsim_timebound = 0;
+    // TODO validate sem_post is the same as SemaphoreSet
+    PIN_SemaphoreSet(&timebound_sem);
+  }
+  
+  assert(wakeup_time == 0);
+  wakeup_time = runtime + sleeptime;
+  PIN_SemaphoreWait(&wakeup_sem);
+}
+
 
 void MemorySimulator::setCR3(pte* ptr) {
   cr3 = ptr;

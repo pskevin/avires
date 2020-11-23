@@ -64,6 +64,6 @@ int SimpleMemoryManager::listnum(struct pte *pte)
   return -1;
 }
 
-void SimpleMemoryManager::init(MemorySimulator& sim) {
-  sim.setCR3(pml4);
+void SimpleMemoryManager::init(MemorySimulator* sim) {
+  sim->setCR3(pml4);
 }
