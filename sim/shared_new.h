@@ -60,7 +60,7 @@
 #define LOG_DEBUG
 
 #ifdef LOG_DEBUG
-#	define MEMSIM_LOG(str, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
+#	define MEMSIM_LOG(str, runtime, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
 #else
 #	define MEMSIM_LOG(std, ...)	while(0) {}
 #endif

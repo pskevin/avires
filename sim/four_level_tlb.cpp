@@ -113,3 +113,13 @@ void FourLevelTLB::tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level
   
   PIN_MutexUnlock(&tlb_lock);
 }
+
+void FourLevelTLB::shootdown(uint64_t addr) {
+  PIN_MutexLock(&tlb_lock);
+  memset(l1tlb_1g, 0, sizeof(l1tlb_1g));
+  memset(l1tlb_2m, 0, sizeof(l1tlb_2m));
+  memset(l1tlb_4k, 0, sizeof(l1tlb_4k));
+  memset(l2tlb_1g, 0, sizeof(l2tlb_1g));
+  memset(l2tlb_2m4k, 0, sizeof(l2tlb_2m4k));
+  PIN_MutexUnlock(&tlb_lock);
+}
