@@ -19,12 +19,12 @@
 #include "four_level_tlb.h"
 
 
-#define MEMORY_MANAGER 0
+#define MEMORY_MANAGER 1
 
 #if MEMORY_MANAGER == 0
     #include "mmgr_simple.h"
 #elif MEMORY_MANAGER == 1
-    #include "mmgr_lru.h"
+    #include "mmgr_linux.h"
 #endif
 
 std::unordered_map<uint64_t, int> hashmap;
@@ -129,17 +129,17 @@ int main(int argc, char * argv[])
     #if MEMORY_MANAGER == 0
         SimpleMemoryManager* mgr = new SimpleMemoryManager();
     #elif MEMORY_MANAGER == 1
-        LRUMemoryManager* mgr = new LRUMemoryManager();
+        LinuxMemoryManager* mgr = new LinuxMemoryManager();
     #else
         exit(1);
     #endif
     FourLevelTLB* tlb = new FourLevelTLB();
-    
     sim = new MemorySimulator(mgr, tlb);
-    mgr->init(sim);
 
     // Initialize pin
     if (PIN_Init(argc, argv)) return Usage();
+    
+    mgr->init(sim);
 
     // Register Instruction to be called to instrument instructions
     INS_AddInstrumentFunction(Instruction, 0);

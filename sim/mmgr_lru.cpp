@@ -41,9 +41,13 @@ uint64_t LRUMemoryManager::getmem(uint64_t addr, struct pte *pte)
 {
   uint64_t ret;
 
+  printf("GETTING MEM\n");
   struct pte* tmp_pte = nullptr;
+
+  printf("enqueuing fast\n");
   uint64_t framenum = enqueue_fast(addr, pte, tmp_pte);
-  
+  printf("got %lu, enqueing onto slow\n", framenum);
+
   tmp_pte = enqueue_slow(addr, tmp_pte);
   // remove this page / mark as non-present
   tmp_pte->present = false;
