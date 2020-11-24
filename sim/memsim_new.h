@@ -8,6 +8,7 @@
 #define MEMSIM_H
 
 using namespace std;
+
 // Memory access type
 typedef enum access_type {
   TYPE_READ,
