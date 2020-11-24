@@ -19,7 +19,7 @@
 #include "four_level_tlb.h"
 
 
-#define MEMORY_MANAGER 1
+#define MEMORY_MANAGER 0
 
 #if MEMORY_MANAGER == 0
     #include "mmgr_simple.h"
@@ -27,7 +27,7 @@
     #include "mmgr_linux.h"
 #endif
 
-std::unordered_map<uint64_t, int> hashmap;
+// std::unordered_map<uint64_t, int> hashmap;
 
 using std::cerr;
 using std::ofstream;
@@ -41,22 +41,22 @@ MemorySimulator* sim;
 VOID RecordMemRead(VOID * ip, uint64_t addr)
 {
     sim->memaccess(addr, TYPE_READ);
-    hashmap[addr]++;
+    // hashmap[addr]++;
 }
 
 // Print a memory write record
 VOID RecordMemWrite(VOID * ip, uint64_t addr)
 {
     sim->memaccess(addr, TYPE_WRITE);
-    hashmap[addr]++;
+    // hashmap[addr]++;
 }
 
-std::string ToString(uint64_t val)
-{
-    std::stringstream stream;
-    stream << val;
-    return stream.str();
-}
+// std::string ToString(uint64_t val)
+// {
+//     std::stringstream stream;
+//     stream << val;
+//     return stream.str();
+// }
 
 // Pin calls this function every time a new instruction is encountered
 VOID Instruction(INS ins, VOID *v)
@@ -95,16 +95,16 @@ VOID Instruction(INS ins, VOID *v)
 VOID Fini(INT32 code, VOID *v)
 {
     // fprintf(0, "#eof\n");
-    string output;
-    std::tr1::unordered_map<uint64_t, int>::iterator kv;
-    for ( kv = hashmap.begin(); kv != hashmap.end(); kv++ )
-    {
-        output.append(ToString(kv->first) + ":" + ToString(kv->second) + "\n");
-    }
-    FILE* file = fopen("addr_hist", "w");
-    fprintf(file, "%s", output.c_str());
-    fclose(file);
-    std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
+    // string output;
+    // std::tr1::unordered_map<uint64_t, int>::iterator kv;
+    // for ( kv = hashmap.begin(); kv != hashmap.end(); kv++ )
+    // {
+    //     output.append(ToString(kv->first) + ":" + ToString(kv->second) + "\n");
+    // }
+    // FILE* file = fopen("addr.hist", "w");
+    // fprintf(file, "%s", output.c_str());
+    // fclose(file);
+    // std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
 }
 
 /* ===================================================================== */
