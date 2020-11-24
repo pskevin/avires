@@ -73,26 +73,26 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 # Build the intermediate object file.
-$(OBJDIR)mem_trace$(OBJ_SUFFIX): mem_trace.cpp $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_lru$(OBJ_SUFFIX) $(OBJDIR)memsim_new$(OBJ_SUFFIX) $(OBJDIR)four_level_tlb$(OBJ_SUFFIX)
-	$(CXX) $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
+$(OBJDIR)mem_trace$(OBJ_SUFFIX): mem_trace.cpp $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_linux$(OBJ_SUFFIX) $(OBJDIR)memsim_new$(OBJ_SUFFIX) $(OBJDIR)four_level_tlb$(OBJ_SUFFIX)
+	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 	
 # Build the intermediate object file.
 $(OBJDIR)four_level_tlb$(OBJ_SUFFIX): four_level_tlb.cpp four_level_tlb.h
-	$(CXX) $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
+	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)mmgr_simple$(OBJ_SUFFIX): mmgr_simple.cpp mmgr_simple.h
-	$(CXX) $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
+	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
-$(OBJDIR)mmgr_lru$(OBJ_SUFFIX): mmgr_lru.cpp mmgr_lru.h
-	$(CXX) $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
+$(OBJDIR)mmgr_linux$(OBJ_SUFFIX): mmgr_linux.cpp mmgr_linux.h
+	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)memsim_new$(OBJ_SUFFIX): memsim_new.cpp memsim_new.h shared_new.h
-	$(CXX) $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
+	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 
 # Build the tool as a dll (shared object).
-$(OBJDIR)mem_trace$(PINTOOL_SUFFIX): $(OBJDIR)mem_trace$(OBJ_SUFFIX) $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_lru$(OBJ_SUFFIX) $(OBJDIR)memsim_new$(OBJ_SUFFIX) $(OBJDIR)four_level_tlb$(OBJ_SUFFIX)
+$(OBJDIR)mem_trace$(PINTOOL_SUFFIX): $(OBJDIR)mem_trace$(OBJ_SUFFIX) $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_linux$(OBJ_SUFFIX) $(OBJDIR)memsim_new$(OBJ_SUFFIX) $(OBJDIR)four_level_tlb$(OBJ_SUFFIX)
 	$(LINKER) $(TOOL_LDFLAGS_NOOPT) $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
 
