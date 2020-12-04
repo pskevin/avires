@@ -132,7 +132,7 @@ namespace CACHE_SET
       printf("tags\n");
       for (uint64_t index = _tagsLastIndex; index >= 0; index--)
       {
-        printf("tags %lu\n", index);
+        printf("tags %ld \n", index);
         _tags[index] = CACHE_TAG(0);
       }
       printf("tags done\n");
