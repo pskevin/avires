@@ -125,17 +125,14 @@ namespace CACHE_SET
     ROUND_ROBIN(uint64_t associativity = MAX_ASSOCIATIVITY)
         : _tagsLastIndex(associativity - 1)
     {
-      printf("in RR constructor\n");
+      printf("in RR constructor %lu %lu\n", associativity, MAX_ASSOCIATIVITY);
       ASSERTX(associativity <= MAX_ASSOCIATIVITY);
       _nextReplaceIndex = _tagsLastIndex;
 
-      printf("tags\n");
-      for (uint64_t index = _tagsLastIndex; index >= 0; index--)
+      for (long int index = _tagsLastIndex; index >= 0; index-= 1)
       {
-        printf("tags %ld \n", index);
         _tags[index] = CACHE_TAG(0);
       }
-      printf("tags done\n");
     }
 
     VOID SetAssociativity(uint64_t associativity)
