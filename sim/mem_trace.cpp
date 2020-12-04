@@ -17,6 +17,7 @@
 
 #include "memsim_new.h"
 #include "four_level_tlb.h"
+#include "l1_data_cache.h"
 
 
 #define MEMORY_MANAGER 0
@@ -38,16 +39,16 @@ using std::endl;
 MemorySimulator* sim;
 
 // Print a memory read record
-VOID RecordMemRead(VOID * ip, uint64_t addr)
+VOID RecordMemRead(uint64_t addr, uint32_t size)
 {
-    sim->memaccess(addr, TYPE_READ);
+    sim->memaccess(addr, TYPE_READ, size);
     // hashmap[addr]++;
 }
 
 // Print a memory write record
-VOID RecordMemWrite(VOID * ip, uint64_t addr)
+VOID RecordMemWrite(uint64_t addr, uint32_t size)
 {
-    sim->memaccess(addr, TYPE_WRITE);
+    sim->memaccess(addr, TYPE_WRITE, size);
     // hashmap[addr]++;
 }
 
@@ -73,10 +74,17 @@ VOID Instruction(INS ins, VOID *v)
     {
         if (INS_MemoryOperandIsRead(ins, memOp))
         {
+            //  const ADDRINT iaddr = INS_Address(ins);
+            // const uint64_t instId = profile.Map(iaddr);
+
+            const uint64_t size = INS_MemoryReadSize(ins);
+            // const BOOL single = (size <= 4);
+
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
-                IARG_INST_PTR,
+                // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
+                IARG_UINT32, size,
                 IARG_END);
         }
         // Note that in some architectures a single memory operand can be 
@@ -84,10 +92,13 @@ VOID Instruction(INS ins, VOID *v)
         // In that case we instrument it once for read and once for write.
         if (INS_MemoryOperandIsWritten(ins, memOp))
         {
+            const uint64_t size = INS_MemoryWriteSize(ins);
+
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
-                IARG_INST_PTR,
+                // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
+                IARG_UINT32, size,
                 IARG_END);
         }
     }
@@ -133,9 +144,13 @@ int main(int argc, char * argv[])
     #else
         exit(1);
     #endif
+    printf("INITIALIZING CACHE\n");
+    L1DataCache* l1d = new L1DataCache();
+    printf("INITIALIZING TLB\n");
     FourLevelTLB* tlb = new FourLevelTLB();
-    sim = new MemorySimulator(mgr, tlb);
-
+    printf("INITIALIZING MEMSIM\n");
+    sim = new MemorySimulator(mgr, tlb, l1d);
+    
     // Initialize pin
     if (PIN_Init(argc, argv)) return Usage();
     

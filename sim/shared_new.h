@@ -53,6 +53,9 @@
 #define TIME_SLOWMEM_READ	1000		// From DCPMM QoS slides
 #define TIME_SLOWMEM_WRITE	1000		// maybe worse?
 
+#define TIME_CACHE_READ	1
+#define TIME_CACHE_WRITE 2
+
 // Fake offset for slowmem in physical memory
 #define SLOWMEM_BIT	((uint64_t)1 << 63)
 #define SLOWMEM_MASK	(((uint64_t)1 << 63) - 1)
@@ -97,8 +100,6 @@ typedef struct pte {
   // Statistics
   size_t ups, downs;
 } pte;
-
-typedef void (*PerfCallback)(uint64_t addr);
 
 static inline uint64_t page_size(enum pagetypes pt)
 {

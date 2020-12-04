@@ -1,11 +1,10 @@
+#ifndef MEMSIM_H
+#define MEMSIM_H
 #include <stdint.h>
 #include <stddef.h>
 #include <semaphore.h>
 #include "shared_new.h"
 #include "pin.H"
-
-#ifndef MEMSIM_H
-#define MEMSIM_H
 
 using namespace std;
 
@@ -22,10 +21,10 @@ typedef struct tlbe {
 } tlbe;
 
 // Software cache entry;
-typedef struct cacheentry {
-  uint64_t	vpfn, ppfn;
-  bool  present;
-} cacheentry;
+// typedef struct cacheentry {
+//   uint64_t	vpfn, ppfn;
+//   bool  present;
+// } cacheentry;
 
 class MemorySimulator;
 
@@ -47,19 +46,19 @@ class TLB {
 
 class CacheManager {
   public:
-    virtual cacheentry* cache_lookup(uint64_t vaddr, int *level);
+    virtual bool cache_access(uint64_t vaddr, memory_access_type type, uint32_t size);
 };
 
 class MemorySimulator {
   public:
-    void memaccess(uint64_t addr, memory_access_type type);
+    void memaccess(uint64_t addr, memory_access_type type, uint32_t size);
     void setCR3(pte* ptr);
     void tlb_shootdown(uint64_t addr);
     void add_runtime(size_t delta);
     void memsim_nanosleep(size_t sleeptime);
     size_t runtime = 0;
     
-  MemorySimulator(MemoryManager* mgr, TLB* tlb) : mmgr_(mgr), tlb_(tlb), cache_(NULL) {
+  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache) : mmgr_(mgr), tlb_(tlb), cache_(cache) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
   }
@@ -72,13 +71,10 @@ class MemorySimulator {
     size_t tlbshootdowns = 0;
     size_t pagefaults = 0;
     size_t accesses[NMEMTYPES];
-    size_t perf_limit = 0;
-    size_t perf_accesses = 0;
 
     size_t wakeup_time = 0;
     size_t memsim_timebound = 0;
     bool	memsim_timebound_thread = false;
-    PerfCallback perf_callback = NULL;
     
     PIN_SEMAPHORE wakeup_sem, timebound_sem;
     
