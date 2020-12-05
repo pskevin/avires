@@ -56,7 +56,9 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
         {
             add_runtime((paddr & SLOWMEM_BIT) ? TIME_SLOWMEM_WRITE : TIME_FASTMEM_WRITE);
         }
-        accesses[(paddr & SLOWMEM_BIT) ? SLOWMEM : FASTMEM]++;   
+        const COUNTER_MEM counter = (paddr & SLOWMEM_BIT) ? COUNTER_SLOWMEM : COUNTER_FASTMEM;
+        mmgr_agg_profile[counter]++;
+        mmgr_profile[mmgr_profile.Map(insaddr)][counter]++;
     }
 }
 
@@ -75,9 +77,8 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
         {
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
-            const COUNTER_PF counter = COUNTER_PAGEFAULT;
-            mmgr_agg_profile[counter]++;
-            mmgr_profile[mmgr_profile.Map(insaddr)][counter]++;
+            mmgr_agg_profile[COUNTER_PAGEFAULT]++;
+            mmgr_profile[mmgr_profile.Map(insaddr)][COUNTER_PAGEFAULT]++;
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
         }
@@ -176,7 +177,7 @@ void MemorySimulator::PrintInstructionProfiles()
 void MemorySimulator::PrintAggregateProfiles()
 {
 
-    // TODO: Figure out how to do this...kinda sucks that we can't aggregate the values
+    // TODO: Figure out how to do this...kinda sucks that we can't aggregate the values directly from the other ones
 
 
     std::cout << "TLB Profile: " << std::endl;
@@ -192,7 +193,7 @@ void MemorySimulator::PrintAggregateProfiles()
     }
     std::cout <<  std::endl;
     std::cout << "MMGR Profile: " << std::endl;
-    std::cout << "Pagefaults" << std::endl;
+    std::cout << "Pagefaults\t\tSLOWMEM\t\tFASTMEM" << std::endl;
     for(const auto& val : mmgr_agg_profile) {
         std::cout << val << "\t\t";
     }
