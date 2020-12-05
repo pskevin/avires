@@ -3,7 +3,7 @@
 #include <iostream>
 #include "pin.H"
 
-void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT ins_addr)
+void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t insid)
 {
     int level = -1;
 
@@ -14,12 +14,12 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     uint64_t paddr = 0;
     if ((te = tlb_->alltlb_lookup(addr, &level)) != NULL)
     {
-        // tlb_profile[ins_addr][COUNTER_HIT]++;
+        tlb_profile[insid][COUNTER_HIT]++;
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
     else
     {
-        // tlb_profile[ins_addr][COUNTER_MISS]++;
+        tlb_profile[insid][COUNTER_MISS]++;
        
         paddr = walk_page_table(addr, type, level);
         assert(level >= 2 && level <= 4);
@@ -31,8 +31,8 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     }
 
     bool cachehit = cache_->cache_access(paddr, type, size);
-    // const COUNTER counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
-    // cache_profile[ins_addr][counter]++;
+    const COUNTER counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
+    cache_profile[insid][counter]++;
 
     if(cachehit) 
     {
@@ -138,7 +138,6 @@ void MemorySimulator::tlb_shootdown(uint64_t addr)
 {
     tlb_->shootdown(addr);
     add_runtime(TIME_TLBSHOOTDOWN);
-    tlbshootdowns++;
 }
 
 void MemorySimulator::memsim_nanosleep(size_t sleeptime)

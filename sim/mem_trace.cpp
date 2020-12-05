@@ -36,20 +36,25 @@ using std::ios;
 using std::string;
 using std::endl;
 
+
+KNOB<uint64_t> KnobThresholdHit(KNOB_MODE_WRITEONCE , "pintool",
+   "rh", "0", "only report memops with hit count above threshold");
+KNOB<uint64_t> KnobThresholdMiss(KNOB_MODE_WRITEONCE, "pintool",
+   "rm","0", "only report memops with miss count above threshold");
+// TODO more knobs
+
 MemorySimulator* sim;
 
 // Print a memory read record
-VOID RecordMemRead(uint64_t addr, uint32_t size, ADDRINT ins_addr)
-{
-    sim->memaccess(addr, TYPE_READ, size, ins_addr);
-    // hashmap[addr]++;
+VOID RecordMemRead(uint64_t addr, uint32_t size, uint64_t insid)
+{   
+    sim->memaccess(addr, TYPE_READ, size, insid);
 }
 
 // Print a memory write record
-VOID RecordMemWrite(uint64_t addr, uint32_t size, ADDRINT ins_addr)
+VOID RecordMemWrite(uint64_t addr, uint32_t size, uint64_t insid)
 {
-    sim->memaccess(addr, TYPE_WRITE, size, ins_addr);
-    // hashmap[addr]++;
+    sim->memaccess(addr, TYPE_WRITE, size, insid);
 }
 
 // std::string ToString(uint64_t val)
@@ -79,13 +84,13 @@ VOID Instruction(INS ins, VOID *v)
 
             const uint64_t size = INS_MemoryReadSize(ins);
             // const BOOL single = (size <= 4);
-
+            const uint64_t instId = sim->cache_profile.Map(INS_Address(ins));
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
-                IARG_ADDRINT, INS_Address(ins),
+                IARG_UINT64, instId,
                 IARG_END);
         }
         // Note that in some architectures a single memory operand can be 
@@ -94,13 +99,14 @@ VOID Instruction(INS ins, VOID *v)
         if (INS_MemoryOperandIsWritten(ins, memOp))
         {
             const uint64_t size = INS_MemoryWriteSize(ins);
+            const uint64_t instId = sim->cache_profile.Map(INS_Address(ins));
 
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
-                IARG_ADDRINT, INS_Address(ins),
+                IARG_UINT64, instId,
                 IARG_END);
         }
     }
@@ -123,13 +129,16 @@ VOID Fini(INT32 code, VOID *v)
 /* ===================================================================== */
 /* Print Help Message                                                    */
 /* ===================================================================== */
-   
 INT32 Usage()
 {
-    PIN_ERROR( "This Pintool prints a trace of memory addresses\n" 
-              + KNOB_BASE::StringKnobSummary() + "\n");
+    cerr <<
+        "This tool represents a memoroy simulator.\n"
+        "\n";
+
+    cerr << KNOB_BASE::StringKnobSummary() << endl; 
     return -1;
 }
+
 
 /* ===================================================================== */
 /* Main                                                                  */
@@ -146,12 +155,19 @@ int main(int argc, char * argv[])
     #else
         exit(1);
     #endif
+
     // printf("INITIALIZING CACHE\n");
     L1DataCache* l1d = new L1DataCache();
     // printf("INITIALIZING TLB\n");
     FourLevelTLB* tlb = new FourLevelTLB();
     // printf("INITIALIZING MEMSIM\n");
-    sim = new MemorySimulator(mgr, tlb, l1d);
+
+    COUNTER_HIT_MISS profile_threshold;
+
+    profile_threshold[COUNTER_HIT] = KnobThresholdHit.Value();
+    profile_threshold[COUNTER_MISS] = KnobThresholdMiss.Value();
+
+    sim = new MemorySimulator(mgr, tlb, l1d, profile_threshold);
     
     // Initialize pin
     if (PIN_Init(argc, argv)) return Usage();
