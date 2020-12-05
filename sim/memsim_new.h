@@ -54,13 +54,15 @@ typedef enum
 
 typedef enum {
   COUNTER_PAGEFAULT = 0,
-  COUNTER_PF_NUM
-} COUNTER_PF;
+  COUNTER_SLOWMEM = 1,
+  COUNTER_FASTMEM = 2,
+  COUNTER_MEM_NUM
+} COUNTER_MEM;
 
 typedef COUNTER_ARRAY<uint64_t, COUNTER_HM_NUM> COUNTER_HIT_MISS;
 
 // Pagefault counters only have one number to track
-typedef COUNTER_ARRAY<uint64_t, COUNTER_PF_NUM> COUNTER_PAGEFAULTS;
+typedef COUNTER_ARRAY<uint64_t, COUNTER_MEM_NUM> COUNTER_PAGEFAULTS;
 
 class MemorySimulator {
   public:
@@ -75,7 +77,7 @@ class MemorySimulator {
 
   MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) :
     mmgr_(mgr), tlb_(tlb), cache_(cache),
-    cache_agg_profile(COUNTER_HM_NUM, 0), tlb_agg_profile(COUNTER_HM_NUM, 0), mmgr_agg_profile(COUNTER_PF_NUM, 0) {
+    cache_agg_profile(COUNTER_HM_NUM, 0), tlb_agg_profile(COUNTER_HM_NUM, 0), mmgr_agg_profile(COUNTER_MEM_NUM, 0) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
 
@@ -86,7 +88,7 @@ class MemorySimulator {
     cache_profile.SetCounterName("dcache:miss        dcache:hit");
 
     mmgr_profile.SetKeyName("iaddr          ");
-    mmgr_profile.SetCounterName("mmgr:pagefault");
+    mmgr_profile.SetCounterName("mmgr:pagefault        mmgr:slowmem        mmgr:fastmem");
 
     cache_profile.SetThreshold(hm_threshold);
     tlb_profile.SetThreshold(hm_threshold);
@@ -95,8 +97,6 @@ class MemorySimulator {
   
   private:
     uint64_t walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level);
-
-    size_t accesses[NMEMTYPES];
     size_t wakeup_time = 0;
     size_t memsim_timebound = 0;
 
