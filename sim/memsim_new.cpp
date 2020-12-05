@@ -3,7 +3,7 @@
 #include <iostream>
 #include "pin.H"
 
-void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t insid)
+void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT insaddr)
 {
     int level = -1;
 
@@ -14,13 +14,15 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     uint64_t paddr = 0;
     if ((te = tlb_->alltlb_lookup(addr, &level)) != NULL)
     {
-        tlb_profile[insid][COUNTER_HIT]++;
+        tlb_profile[tlb_profile.Map(0)][COUNTER_HIT]++;
+        tlb_profile[tlb_profile.Map(insaddr)][COUNTER_HIT]++;
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
     else
     {
-        tlb_profile[insid][COUNTER_MISS]++;
-        paddr = walk_page_table(addr, type, insid, level);
+        tlb_profile[tlb_profile.Map(0)][COUNTER_MISS]++;
+        tlb_profile[tlb_profile.Map(insaddr)][COUNTER_MISS]++;
+        paddr = walk_page_table(addr, type, insaddr, level);
         assert(level >= 2 && level <= 4);
 
         assert(paddr != 0);
@@ -31,7 +33,8 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
 
     bool cachehit = cache_->cache_access(paddr, type, size);
     const COUNTER_HM counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
-    cache_profile[insid][counter]++;
+    cache_profile[cache_profile.Map(0)][counter]++;
+    cache_profile[cache_profile.Map(insaddr)][counter]++;
 
     if(cachehit) 
     {
@@ -58,7 +61,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
 }
 
 // 4-level page walk
-uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type, uint64_t insid, int &level)
+uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level)
 {
     assert(cr3 != NULL);
     struct pte *ptable = cr3, *pte = NULL;
@@ -73,7 +76,8 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
             const COUNTER_PF counter = COUNTER_PAGEFAULT;
-            mmgr_profile[insid][counter]++;
+            mmgr_profile[mmgr_profile.Map(0)][counter]++;
+            mmgr_profile[mmgr_profile.Map(insaddr)][counter]++;
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
         }
@@ -157,4 +161,31 @@ void MemorySimulator::memsim_nanosleep(size_t sleeptime)
 void MemorySimulator::setCR3(pte *ptr)
 {
     cr3 = ptr;
+}
+
+void MemorySimulator::PrintInstructionProfiles()
+{
+    std::cout << "TLB Profile: " << std::endl;
+    std::cout << tlb_profile.StringLong() << std::endl;
+    std::cout << "Cache Profile: " << std::endl;
+    std::cout << cache_profile.StringLong() << std::endl;
+    std::cout << "MMGR Profile: " << std::endl;
+    std::cout << mmgr_profile.StringLong() << std::endl;
+}
+
+void MemorySimulator::PrintAggregateProfiles()
+{
+
+    // TODO: Figure out how to do this...kinda sucks that we can't aggregate the values
+
+
+    std::cout << "TLB Profile: " << std::endl;
+    std::cout << "Miss        Hit" << std::endl;
+    std::cout << tlb_profile.at(tlb_profile.Map(0)).str() << std::endl;
+    std::cout << "Cache Profile: " << std::endl;
+    std::cout << "Miss        Hit" << std::endl;
+    std::cout << cache_profile.at(cache_profile.Map(0)).str() << std::endl;
+    std::cout << "MMGR Profile: " << std::endl;
+    std::cout << "Pagefaults" << std::endl;
+    std::cout << mmgr_profile.at(mmgr_profile.Map(0)).str() << std::endl;
 }
