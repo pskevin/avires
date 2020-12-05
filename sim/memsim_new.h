@@ -62,26 +62,12 @@ typedef COUNTER_ARRAY<uint64_t, COUNTER_NUM> COUNTER_HIT_MISS;
 
 class MemorySimulator {
   public:
-    void memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT ins_addr);
+    void memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t insid);
     void setCR3(pte* ptr);
     void tlb_shootdown(uint64_t addr);
     void add_runtime(size_t delta);
     void memsim_nanosleep(size_t sleeptime);
     size_t runtime = 0;
-    
-  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache) : mmgr_(mgr), tlb_(tlb), cache_(cache) {
-    PIN_SemaphoreInit(&wakeup_sem);
-    PIN_SemaphoreInit(&timebound_sem);
-  }
-  
-  private:
-    uint64_t walk_page_table(uint64_t addr, memory_access_type type, int &level);
-
-    size_t tlbmisses = 0;
-    size_t tlbhits = 0;
-    size_t tlbshootdowns = 0;
-    size_t pagefaults = 0;
-    size_t accesses[NMEMTYPES];
 
     // holds the counters with misses and hits
     // conceptually this is an array indexed by instruction address
@@ -89,6 +75,29 @@ class MemorySimulator {
     COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> mmgr_profile;
     COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> tlb_profile;
 
+  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS profile_threshold) : mmgr_(mgr), tlb_(tlb), cache_(cache) {
+    PIN_SemaphoreInit(&wakeup_sem);
+    PIN_SemaphoreInit(&timebound_sem);
+
+    tlb_profile.SetKeyName("iaddr          ");
+    tlb_profile.SetCounterName("tlb:miss        tlb:hit");
+
+    mmgr_profile.SetKeyName("iaddr          ");
+    mmgr_profile.SetCounterName("mmgr:miss        mmgr:hit");
+
+    cache_profile.SetKeyName("iaddr          ");
+    cache_profile.SetCounterName("dcache:miss        dcache:hit");
+
+    cache_profile.SetThreshold(profile_threshold);
+    mmgr_profile.SetThreshold(profile_threshold);
+    tlb_profile.SetThreshold(profile_threshold);
+  }
+  
+  private:
+    uint64_t walk_page_table(uint64_t addr, memory_access_type type, int &level);
+
+    size_t pagefaults = 0;
+    size_t accesses[NMEMTYPES];
     size_t wakeup_time = 0;
     size_t memsim_timebound = 0;
     bool	memsim_timebound_thread = false;
