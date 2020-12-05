@@ -73,14 +73,9 @@ class MemorySimulator {
     void PrintAggregateProfiles();
     size_t runtime = 0;
 
-    // holds the counters with misses and hits
-    // conceptually this is an array indexed by instruction address
-    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> cache_profile;
-    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> tlb_profile;
-    // holds the counter for pagefaults
-    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_PAGEFAULTS> mmgr_profile;
-
-  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) : mmgr_(mgr), tlb_(tlb), cache_(cache) {
+  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) :
+    mmgr_(mgr), tlb_(tlb), cache_(cache),
+    cache_agg_profile(COUNTER_HM_NUM, 0), tlb_agg_profile(COUNTER_HM_NUM, 0), mmgr_agg_profile(COUNTER_PF_NUM, 0) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
 
@@ -93,11 +88,6 @@ class MemorySimulator {
     mmgr_profile.SetKeyName("iaddr          ");
     mmgr_profile.SetCounterName("mmgr:pagefault");
 
-    // the instruction at address 0 is for aggregate stats
-    cache_profile.Map(0);
-    tlb_profile.Map(0);
-    mmgr_profile.Map(0);
-
     cache_profile.SetThreshold(hm_threshold);
     tlb_profile.SetThreshold(hm_threshold);
     mmgr_profile.SetThreshold(pf_threshold);
@@ -106,10 +96,10 @@ class MemorySimulator {
   private:
     uint64_t walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level);
 
-    size_t pagefaults = 0;
     size_t accesses[NMEMTYPES];
     size_t wakeup_time = 0;
     size_t memsim_timebound = 0;
+
     bool	memsim_timebound_thread = false;
     
     PIN_SEMAPHORE wakeup_sem, timebound_sem;
@@ -118,6 +108,17 @@ class MemorySimulator {
     MemoryManager* mmgr_;
     TLB* tlb_;
     CacheManager* cache_;
+
+    std::vector<uint64_t> cache_agg_profile;
+    std::vector<uint64_t> tlb_agg_profile;
+    std::vector<uint64_t> mmgr_agg_profile;
+
+    // holds the counters with misses and hits
+    // conceptually this is an array indexed by instruction address
+    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> cache_profile;
+    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> tlb_profile;
+    // holds the counter for pagefaults
+    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_PAGEFAULTS> mmgr_profile;
 };
 
 // From Wikipedia
