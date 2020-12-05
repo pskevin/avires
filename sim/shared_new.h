@@ -60,8 +60,6 @@
 #define SLOWMEM_BIT	((uint64_t)1 << 63)
 #define SLOWMEM_MASK	(((uint64_t)1 << 63) - 1)
 
-#define LOG_DEBUG
-
 #ifdef LOG_DEBUG
 #	define MEMSIM_LOG(str, runtime, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
 #else

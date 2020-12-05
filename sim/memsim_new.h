@@ -22,12 +22,6 @@ typedef struct tlbe {
   bool		present, hugepage;
 } tlbe;
 
-// Software cache entry;
-// typedef struct cacheentry {
-//   uint64_t	vpfn, ppfn;
-//   bool  present;
-// } cacheentry;
-
 class MemorySimulator;
 
 class MemoryManager {
@@ -55,10 +49,18 @@ typedef enum
 {
   COUNTER_MISS = 0,
   COUNTER_HIT = 1,
-  COUNTER_NUM
-} COUNTER;
+  COUNTER_HM_NUM
+} COUNTER_HM;
 
-typedef COUNTER_ARRAY<uint64_t, COUNTER_NUM> COUNTER_HIT_MISS;
+typedef enum {
+  COUNTER_PAGEFAULT = 0,
+  COUNTER_PF_NUM
+} COUNTER_PF;
+
+typedef COUNTER_ARRAY<uint64_t, COUNTER_HM_NUM> COUNTER_HIT_MISS;
+
+// Pagefault counters only have one number to track
+typedef COUNTER_ARRAY<uint64_t, COUNTER_PF_NUM> COUNTER_PAGEFAULTS;
 
 class MemorySimulator {
   public:
@@ -72,29 +74,30 @@ class MemorySimulator {
     // holds the counters with misses and hits
     // conceptually this is an array indexed by instruction address
     COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> cache_profile;
-    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> mmgr_profile;
     COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> tlb_profile;
+    // holds the counter for pagefaults
+    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_PAGEFAULTS> mmgr_profile;
 
-  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS profile_threshold) : mmgr_(mgr), tlb_(tlb), cache_(cache) {
+  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) : mmgr_(mgr), tlb_(tlb), cache_(cache) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
 
     tlb_profile.SetKeyName("iaddr          ");
     tlb_profile.SetCounterName("tlb:miss        tlb:hit");
 
-    mmgr_profile.SetKeyName("iaddr          ");
-    mmgr_profile.SetCounterName("mmgr:miss        mmgr:hit");
-
     cache_profile.SetKeyName("iaddr          ");
     cache_profile.SetCounterName("dcache:miss        dcache:hit");
 
-    cache_profile.SetThreshold(profile_threshold);
-    mmgr_profile.SetThreshold(profile_threshold);
-    tlb_profile.SetThreshold(profile_threshold);
+    mmgr_profile.SetKeyName("iaddr          ");
+    mmgr_profile.SetCounterName("mmgr:pagefault");
+
+    cache_profile.SetThreshold(hm_threshold);
+    tlb_profile.SetThreshold(hm_threshold);
+    mmgr_profile.SetThreshold(pf_threshold);
   }
   
   private:
-    uint64_t walk_page_table(uint64_t addr, memory_access_type type, int &level);
+    uint64_t walk_page_table(uint64_t addr, memory_access_type type, uint64_t insid, int &level);
 
     size_t pagefaults = 0;
     size_t accesses[NMEMTYPES];

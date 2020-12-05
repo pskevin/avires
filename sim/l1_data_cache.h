@@ -124,7 +124,6 @@ namespace CACHE_SET
     ROUND_ROBIN(uint64_t associativity = MAX_ASSOCIATIVITY)
         : _tagsLastIndex(associativity - 1)
     {
-      printf("in RR constructor %lu %lu\n", associativity, MAX_ASSOCIATIVITY);
       ASSERTX(associativity <= MAX_ASSOCIATIVITY);
       _nextReplaceIndex = _tagsLastIndex;
 
@@ -280,7 +279,6 @@ public:
   CACHE(std::string name, uint64_t cacheSize, uint64_t lineSize, uint64_t associativity)
       : CACHE_BASE(name, cacheSize, lineSize, associativity)
   {
-    printf("GOT IN CACHE CONSTRUCFTOR\n");
     ASSERTX(NumSets() <= MAX_SETS);
 
     for (uint64_t i = 0; i < NumSets(); i++)

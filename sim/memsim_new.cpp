@@ -20,8 +20,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     else
     {
         tlb_profile[insid][COUNTER_MISS]++;
-       
-        paddr = walk_page_table(addr, type, level);
+        paddr = walk_page_table(addr, type, insid, level);
         assert(level >= 2 && level <= 4);
 
         assert(paddr != 0);
@@ -31,7 +30,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     }
 
     bool cachehit = cache_->cache_access(paddr, type, size);
-    const COUNTER counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
+    const COUNTER_HM counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
     cache_profile[insid][counter]++;
 
     if(cachehit) 
@@ -59,7 +58,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
 }
 
 // 4-level page walk
-uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type, int &level)
+uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type, uint64_t insid, int &level)
 {
     assert(cr3 != NULL);
     struct pte *ptable = cr3, *pte = NULL;
@@ -73,12 +72,12 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
         {
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
-            pagefaults++;
+            const COUNTER_PF counter = COUNTER_PAGEFAULT;
+            mmgr_profile[insid][counter]++;
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
         }
 
-        // printf("HERE %d %d %lu\n", !pte->accessed, pte->pagemap, pte->accessed & SLOWMEM_BIT);
         if (!pte->accessed && pte->pagemap && (pte->addr & SLOWMEM_BIT))
         {
             MEMSIM_LOG("[%s in SLOWMEM vaddr 0x%" PRIx64 ", pt %u], paddr 0x%" PRIx64 "\n",

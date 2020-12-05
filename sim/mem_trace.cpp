@@ -41,6 +41,8 @@ KNOB<uint64_t> KnobThresholdHit(KNOB_MODE_WRITEONCE , "pintool",
    "rh", "0", "only report memops with hit count above threshold");
 KNOB<uint64_t> KnobThresholdMiss(KNOB_MODE_WRITEONCE, "pintool",
    "rm","0", "only report memops with miss count above threshold");
+KNOB<uint64_t> KnobThresholdPagefault(KNOB_MODE_WRITEONCE, "pintool",
+   "rf","0", "only report memops with pagefault count above threshold");
 // TODO more knobs
 
 MemorySimulator* sim;
@@ -162,12 +164,16 @@ int main(int argc, char * argv[])
     FourLevelTLB* tlb = new FourLevelTLB();
     // printf("INITIALIZING MEMSIM\n");
 
-    COUNTER_HIT_MISS profile_threshold;
+    COUNTER_HIT_MISS hm_threshold;
 
-    profile_threshold[COUNTER_HIT] = KnobThresholdHit.Value();
-    profile_threshold[COUNTER_MISS] = KnobThresholdMiss.Value();
+    hm_threshold[COUNTER_HIT] = KnobThresholdHit.Value();
+    hm_threshold[COUNTER_MISS] = KnobThresholdMiss.Value();
 
-    sim = new MemorySimulator(mgr, tlb, l1d, profile_threshold);
+    COUNTER_PAGEFAULTS pf_threshold;
+
+    pf_threshold[COUNTER_PAGEFAULT] = KnobThresholdHit.Value();
+
+    sim = new MemorySimulator(mgr, tlb, l1d, hm_threshold, pf_threshold);
     
     // Initialize pin
     if (PIN_Init(argc, argv)) return Usage();
