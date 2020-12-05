@@ -1,10 +1,12 @@
 #ifndef MEMSIM_H
 #define MEMSIM_H
 #include <stdint.h>
+// typedef uint64_t CACHE_STATS; // type of cache hit/miss counters
 #include <stddef.h>
 #include <semaphore.h>
 #include "shared_new.h"
 #include "pin.H"
+#include "pin_profile.H"
 
 using namespace std;
 
@@ -49,9 +51,18 @@ class CacheManager {
     virtual bool cache_access(uint64_t vaddr, memory_access_type type, uint32_t size);
 };
 
+typedef enum
+{
+  COUNTER_MISS = 0,
+  COUNTER_HIT = 1,
+  COUNTER_NUM
+} COUNTER;
+
+typedef COUNTER_ARRAY<uint64_t, COUNTER_NUM> COUNTER_HIT_MISS;
+
 class MemorySimulator {
   public:
-    void memaccess(uint64_t addr, memory_access_type type, uint32_t size);
+    void memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT ins_addr);
     void setCR3(pte* ptr);
     void tlb_shootdown(uint64_t addr);
     void add_runtime(size_t delta);
@@ -71,6 +82,12 @@ class MemorySimulator {
     size_t tlbshootdowns = 0;
     size_t pagefaults = 0;
     size_t accesses[NMEMTYPES];
+
+    // holds the counters with misses and hits
+    // conceptually this is an array indexed by instruction address
+    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> cache_profile;
+    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> mmgr_profile;
+    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> tlb_profile;
 
     size_t wakeup_time = 0;
     size_t memsim_timebound = 0;

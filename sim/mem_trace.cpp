@@ -39,16 +39,16 @@ using std::endl;
 MemorySimulator* sim;
 
 // Print a memory read record
-VOID RecordMemRead(uint64_t addr, uint32_t size)
+VOID RecordMemRead(uint64_t addr, uint32_t size, ADDRINT ins_addr)
 {
-    sim->memaccess(addr, TYPE_READ, size);
+    sim->memaccess(addr, TYPE_READ, size, ins_addr);
     // hashmap[addr]++;
 }
 
 // Print a memory write record
-VOID RecordMemWrite(uint64_t addr, uint32_t size)
+VOID RecordMemWrite(uint64_t addr, uint32_t size, ADDRINT ins_addr)
 {
-    sim->memaccess(addr, TYPE_WRITE, size);
+    sim->memaccess(addr, TYPE_WRITE, size, ins_addr);
     // hashmap[addr]++;
 }
 
@@ -85,6 +85,7 @@ VOID Instruction(INS ins, VOID *v)
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
+                IARG_ADDRINT, INS_Address(ins),
                 IARG_END);
         }
         // Note that in some architectures a single memory operand can be 
@@ -99,6 +100,7 @@ VOID Instruction(INS ins, VOID *v)
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
+                IARG_ADDRINT, INS_Address(ins),
                 IARG_END);
         }
     }
@@ -144,11 +146,11 @@ int main(int argc, char * argv[])
     #else
         exit(1);
     #endif
-    printf("INITIALIZING CACHE\n");
+    // printf("INITIALIZING CACHE\n");
     L1DataCache* l1d = new L1DataCache();
-    printf("INITIALIZING TLB\n");
+    // printf("INITIALIZING TLB\n");
     FourLevelTLB* tlb = new FourLevelTLB();
-    printf("INITIALIZING MEMSIM\n");
+    // printf("INITIALIZING MEMSIM\n");
     sim = new MemorySimulator(mgr, tlb, l1d);
     
     // Initialize pin
