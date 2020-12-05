@@ -14,13 +14,13 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     uint64_t paddr = 0;
     if ((te = tlb_->alltlb_lookup(addr, &level)) != NULL)
     {
-        tlb_profile[tlb_profile.Map(0)][COUNTER_HIT]++;
+        tlb_agg_profile[COUNTER_HIT]++;
         tlb_profile[tlb_profile.Map(insaddr)][COUNTER_HIT]++;
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
     else
     {
-        tlb_profile[tlb_profile.Map(0)][COUNTER_MISS]++;
+        tlb_agg_profile[COUNTER_MISS]++;
         tlb_profile[tlb_profile.Map(insaddr)][COUNTER_MISS]++;
         paddr = walk_page_table(addr, type, insaddr, level);
         assert(level >= 2 && level <= 4);
@@ -33,7 +33,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
 
     bool cachehit = cache_->cache_access(paddr, type, size);
     const COUNTER_HM counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
-    cache_profile[cache_profile.Map(0)][counter]++;
+    cache_agg_profile[counter]++;
     cache_profile[cache_profile.Map(insaddr)][counter]++;
 
     if(cachehit) 
@@ -76,7 +76,7 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
             const COUNTER_PF counter = COUNTER_PAGEFAULT;
-            mmgr_profile[mmgr_profile.Map(0)][counter]++;
+            mmgr_agg_profile[counter]++;
             mmgr_profile[mmgr_profile.Map(insaddr)][counter]++;
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
@@ -180,12 +180,21 @@ void MemorySimulator::PrintAggregateProfiles()
 
 
     std::cout << "TLB Profile: " << std::endl;
-    std::cout << "Miss        Hit" << std::endl;
-    std::cout << tlb_profile.at(tlb_profile.Map(0)).str() << std::endl;
+    std::cout << "Miss\t\tHit" << std::endl;
+    for(const auto& val : tlb_agg_profile) {
+        std::cout << val << "\t\t";
+    }
+    std::cout <<  std::endl;
     std::cout << "Cache Profile: " << std::endl;
-    std::cout << "Miss        Hit" << std::endl;
-    std::cout << cache_profile.at(cache_profile.Map(0)).str() << std::endl;
+    std::cout << "Miss\t\tHit" << std::endl;
+    for(const auto& val : cache_agg_profile) {
+        std::cout << val << "\t\t";
+    }
+    std::cout <<  std::endl;
     std::cout << "MMGR Profile: " << std::endl;
     std::cout << "Pagefaults" << std::endl;
-    std::cout << mmgr_profile.at(mmgr_profile.Map(0)).str() << std::endl;
+    for(const auto& val : mmgr_agg_profile) {
+        std::cout << val << "\t\t";
+    }
+    std::cout <<  std::endl;
 }
