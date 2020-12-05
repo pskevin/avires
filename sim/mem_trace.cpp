@@ -48,15 +48,15 @@ KNOB<uint64_t> KnobThresholdPagefault(KNOB_MODE_WRITEONCE, "pintool",
 MemorySimulator* sim;
 
 // Print a memory read record
-VOID RecordMemRead(uint64_t addr, uint32_t size, uint64_t insid)
+VOID RecordMemRead(uint64_t addr, uint32_t size, ADDRINT insaddr)
 {   
-    sim->memaccess(addr, TYPE_READ, size, insid);
+    sim->memaccess(addr, TYPE_READ, size, insaddr);
 }
 
 // Print a memory write record
-VOID RecordMemWrite(uint64_t addr, uint32_t size, uint64_t insid)
+VOID RecordMemWrite(uint64_t addr, uint32_t size, ADDRINT insaddr)
 {
-    sim->memaccess(addr, TYPE_WRITE, size, insid);
+    sim->memaccess(addr, TYPE_WRITE, size, insaddr);
 }
 
 // std::string ToString(uint64_t val)
@@ -86,13 +86,12 @@ VOID Instruction(INS ins, VOID *v)
 
             const uint64_t size = INS_MemoryReadSize(ins);
             // const BOOL single = (size <= 4);
-            const uint64_t instId = sim->cache_profile.Map(INS_Address(ins));
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
-                IARG_UINT64, instId,
+                IARG_ADDRINT, INS_Address(ins),
                 IARG_END);
         }
         // Note that in some architectures a single memory operand can be 
@@ -101,14 +100,13 @@ VOID Instruction(INS ins, VOID *v)
         if (INS_MemoryOperandIsWritten(ins, memOp))
         {
             const uint64_t size = INS_MemoryWriteSize(ins);
-            const uint64_t instId = sim->cache_profile.Map(INS_Address(ins));
 
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
-                IARG_UINT64, instId,
+                IARG_ADDRINT, INS_Address(ins),
                 IARG_END);
         }
     }
@@ -126,6 +124,8 @@ VOID Fini(INT32 code, VOID *v)
     // fprintf(file, "%s", output.c_str());
     // fclose(file);
     // std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
+    sim->PrintAggregateProfiles();
+    
 }
 
 /* ===================================================================== */

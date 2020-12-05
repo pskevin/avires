@@ -64,11 +64,13 @@ typedef COUNTER_ARRAY<uint64_t, COUNTER_PF_NUM> COUNTER_PAGEFAULTS;
 
 class MemorySimulator {
   public:
-    void memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t insid);
+    void memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT insaddr);
     void setCR3(pte* ptr);
     void tlb_shootdown(uint64_t addr);
     void add_runtime(size_t delta);
     void memsim_nanosleep(size_t sleeptime);
+    void PrintInstructionProfiles();
+    void PrintAggregateProfiles();
     size_t runtime = 0;
 
     // holds the counters with misses and hits
@@ -91,13 +93,18 @@ class MemorySimulator {
     mmgr_profile.SetKeyName("iaddr          ");
     mmgr_profile.SetCounterName("mmgr:pagefault");
 
+    // the instruction at address 0 is for aggregate stats
+    cache_profile.Map(0);
+    tlb_profile.Map(0);
+    mmgr_profile.Map(0);
+
     cache_profile.SetThreshold(hm_threshold);
     tlb_profile.SetThreshold(hm_threshold);
     mmgr_profile.SetThreshold(pf_threshold);
   }
   
   private:
-    uint64_t walk_page_table(uint64_t addr, memory_access_type type, uint64_t insid, int &level);
+    uint64_t walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level);
 
     size_t pagefaults = 0;
     size_t accesses[NMEMTYPES];
