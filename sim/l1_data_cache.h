@@ -10,7 +10,6 @@
 
 #include "inttypes.h"
 #include "pin.H"
-
 typedef uint64_t CACHE_STATS; // type of cache hit/miss counters
 
 using std::cerr;
@@ -366,9 +365,6 @@ bool CACHE<SET, MAX_SETS, STORE_ALLOCATION>::AccessSingleLine(ADDRINT addr, ACCE
 #ifndef L1_DATA_CACHE_H
 #define L1_DATA_CACHE_H
 #include "memsim_new.h"
-typedef uint64_t CACHE_STATS; // type of cache hit/miss counters
-#include "pin_profile.H"
-// #include "pin_cache.H"
 
 #include <sstream>
 #include <string>
@@ -393,14 +389,6 @@ namespace DL1
   typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
 } // namespace DL1
 
-typedef enum
-{
-  COUNTER_MISS = 0,
-  COUNTER_HIT = 1,
-  COUNTER_NUM
-} COUNTER;
-
-typedef COUNTER_ARRAY<uint64_t, COUNTER_NUM> COUNTER_HIT_MISS;
 
 class L1DataCache : public CacheManager
 {
@@ -418,10 +406,6 @@ private:
   bool store_single(uint64_t addr);
 
   DL1::CACHE *dl1;
-
-  // holds the counters with misses and hits
-  // conceptually this is an array indexed by instruction address
-  COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> profile;
 };
 
 #endif // L1_DATA_CACHE_H
