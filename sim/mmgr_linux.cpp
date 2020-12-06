@@ -244,7 +244,11 @@ void LinuxMemoryManager::kswapd(void *arg)
   while(!should_thread_close) {
     sim_->memsim_nanosleep(KSWAPD_INTERVAL);
 
-    PIN_MutexLock(&global_lock);
+    while(!PIN_MutexTryLock(&global_lock)) {
+      if (should_thread_close) {
+        return;
+      }
+    }
 
     shrink_caches(&pages_active[FASTMEM], &pages_inactive[FASTMEM]);
     shrink_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]);
@@ -314,5 +318,7 @@ void LinuxMemoryManager::kswapd(void *arg)
 
 void LinuxMemoryManager::shutdown() 
 {
+  printf("Shutting down\n");
   should_thread_close = true;
+  PIN_Yield();
 }

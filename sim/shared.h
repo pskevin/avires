@@ -1,11 +1,10 @@
-#include <stdint.h>
-#include <stddef.h>
-// #include <atomic>
-#include <assert.h>
-#include "inttypes.h"
+#ifndef SHARED_H
+#define SHARED_H
 
-#ifndef MEMSIM_SHARED_H
-#define MEMSIM_SHARED_H
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdatomic.h>
 
 // Handy size macros
 #define KB(x)		(((uint64_t)x) * 1024)
@@ -34,7 +33,7 @@
 #define GIGA_PFN_MASK	(GIGA_PAGE_MASK ^ UINT64_MAX)
 
 // Physical memory sizes in bytes
-#define FASTMEM_SIZE	MB(42)
+#define FASTMEM_SIZE	GB(42)
 #define SLOWMEM_SIZE	GB(512)
 #define CACHELINE_SIZE	64
 #define MMM_LINE_SIZE	256
@@ -53,18 +52,21 @@
 #define TIME_SLOWMEM_READ	1000		// From DCPMM QoS slides
 #define TIME_SLOWMEM_WRITE	1000		// maybe worse?
 
-#define TIME_CACHE_READ	1
-#define TIME_CACHE_WRITE 2
-
 // Fake offset for slowmem in physical memory
 #define SLOWMEM_BIT	((uint64_t)1 << 63)
 #define SLOWMEM_MASK	(((uint64_t)1 << 63) - 1)
 
 #ifdef LOG_DEBUG
-#	define MEMSIM_LOG(str, runtime, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
+#	define LOG(str, ...)	fprintf(stderr, "%.2f " str, (double)runtime / 1000000000.0, ##__VA_ARGS__)
 #else
-#	define MEMSIM_LOG(std, ...)	while(0) {}
+#	define LOG(std, ...)	while(0) {}
 #endif
+
+// Memory access type
+enum access_type {
+  TYPE_READ,
+  TYPE_WRITE,
+};
 
 enum memtypes {
   FASTMEM = 0,
@@ -73,38 +75,56 @@ enum memtypes {
 };
 
 enum pagetypes {
-  GIGA_PAGE = 0,
-  HUGE_PAGE,
-  BASE_PAGE,
+  GIGA = 0,
+  HUGE,
+  BASE,
   NPAGETYPES
 };
 
-typedef struct pte {
+// Page table entry
+struct pte {
   // Hardware bits
   uint64_t addr;			// Page physical address, if pagemap
   struct pte *next;			// Next page table pointer, if !pagemap
-  
-  // these bools should be "atomic"
-  volatile bool present;
-  volatile bool readonly;
-  volatile bool accessed;
-  volatile bool modified;
-  volatile bool pagemap;			// This PTE maps a page
+  _Atomic bool present;
+  _Atomic bool readonly;
+  _Atomic bool accessed;
+  _Atomic bool modified;
+  _Atomic bool pagemap;			// This PTE maps a page
 
   // OS bits (16 bits available)
-  volatile bool migration;		// Range is under migration
-  volatile bool all_slow;		// All in slowmem
+  _Atomic bool migration;		// Range is under migration
+  _Atomic bool all_slow;		// All in slowmem
 
   // Statistics
   size_t ups, downs;
-} pte;
+};
+
+typedef void (*PerfCallback)(uint64_t addr);
+
+// readonly is set if the page was a write to a read-only
+// page. Otherwise, it was any access to a non-present page.
+void pagefault(uint64_t addr, bool readonly);
+void tlb_shootdown(uint64_t addr);
+void mmgr_init(void);
+void add_runtime(size_t delta);
+void memsim_nanosleep(size_t sleeptime);
+void perf_register(PerfCallback callback, size_t limit);
+
+// XXX: Debug
+int listnum(struct pte *pte);
+
+extern _Atomic size_t runtime;
+extern struct pte *cr3;
+extern _Atomic size_t memsim_timebound;
+extern __thread bool memsim_timebound_thread;
 
 static inline uint64_t page_size(enum pagetypes pt)
 {
   switch(pt) {
-  case GIGA_PAGE: return GIGA_PAGE_SIZE;
-  case HUGE_PAGE: return HUGE_PAGE_SIZE;
-  case BASE_PAGE: return BASE_PAGE_SIZE;
+  case GIGA: return GIGA_PAGE_SIZE;
+  case HUGE: return HUGE_PAGE_SIZE;
+  case BASE: return BASE_PAGE_SIZE;
   default: assert(!"Unknown page type");
   }
 }
@@ -112,9 +132,9 @@ static inline uint64_t page_size(enum pagetypes pt)
 static inline uint64_t pfn_mask(enum pagetypes pt)
 {
   switch(pt) {
-  case GIGA_PAGE: return GIGA_PFN_MASK;
-  case HUGE_PAGE: return HUGE_PFN_MASK;
-  case BASE_PAGE: return BASE_PFN_MASK;
+  case GIGA: return GIGA_PFN_MASK;
+  case HUGE: return HUGE_PFN_MASK;
+  case BASE: return BASE_PFN_MASK;
   default: assert(!"Unknown page type");
   }
 }
@@ -122,12 +142,11 @@ static inline uint64_t pfn_mask(enum pagetypes pt)
 static inline uint64_t page_mask(enum pagetypes pt)
 {
   switch(pt) {
-  case GIGA_PAGE: return GIGA_PAGE_MASK;
-  case HUGE_PAGE: return HUGE_PAGE_MASK;
-  case BASE_PAGE: return BASE_PAGE_MASK;
+  case GIGA: return GIGA_PAGE_MASK;
+  case HUGE: return HUGE_PAGE_MASK;
+  case BASE: return BASE_PAGE_MASK;
   default: assert(!"Unknown page type");
   }
 }
-
 
 #endif
