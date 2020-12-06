@@ -24,6 +24,7 @@ class LinuxMemoryManager: public MemoryManager {
     void pagefault(uint64_t addr, bool readonly);
     void init(MemorySimulator* sim);
     void kswapd(void *arg);
+    void shutdown();
 
   private:
     int listnum(struct pte *pte);
@@ -39,4 +40,7 @@ class LinuxMemoryManager: public MemoryManager {
     PIN_MUTEX global_lock;
     volatile bool in_kswapd = false;
     MemorySimulator* sim_;
+
+    PIN_THREAD_UID threadUID;
+    volatile bool should_thread_close = false;
 };

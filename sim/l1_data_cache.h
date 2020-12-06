@@ -127,7 +127,7 @@ namespace CACHE_SET
       ASSERTX(associativity <= MAX_ASSOCIATIVITY);
       _nextReplaceIndex = _tagsLastIndex;
 
-      for (long int index = _tagsLastIndex; index >= 0; index-= 1)
+      for (long index = _tagsLastIndex; index >= 0; index--)
       {
         _tags[index] = CACHE_TAG(0);
       }
@@ -145,7 +145,7 @@ namespace CACHE_SET
     {
       bool result = true;
 
-      for (uint64_t index = _tagsLastIndex; index >= 0; index--)
+      for (long index = _tagsLastIndex; index >= 0; index--)
       {
         // this is an ugly micro-optimization, but it does cause a
         // tighter assembly loop for ARM that way ...
@@ -393,9 +393,10 @@ class L1DataCache : public CacheManager
 public:
   L1DataCache()
   {
-    dl1 = new DL1::CACHE("L1 Data Cache", 32 * KILO, 64, 8);
+    dl1 = new DL1::CACHE("L1 Data Cache", 4 * KILO, 16, 8);
   }
   bool cache_access(uint64_t vaddr, memory_access_type type, uint32_t size);
+  DL1::CACHE* getCache();
 
 private:
   bool load_multi(uint64_t addr, uint32_t size);

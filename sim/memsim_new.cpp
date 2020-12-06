@@ -23,10 +23,14 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     {
         tlb_agg_profile[COUNTER_MISS]++;
         tlb_profile[tlb_profile.Map(insaddr)][COUNTER_MISS]++;
+
         paddr = walk_page_table(addr, type, insaddr, level);
         assert(level >= 2 && level <= 4);
-
-        assert(paddr != 0);
+        
+        if (paddr == 0) {
+            printf("BROKEN %lu %lu %d\n", addr, paddr, level);
+        }
+        assert (paddr != 0);
         assert(level != -1);
         // Insert in TLB
         tlb_->tlb_insert(addr, paddr, level);
@@ -36,6 +40,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     const COUNTER_HM counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
     cache_agg_profile[counter]++;
     cache_profile[cache_profile.Map(insaddr)][counter]++;
+
 
     if(cachehit) 
     {
@@ -108,6 +113,9 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
     }
 
     assert(pte != NULL);
+    // if (pte->addr + (addr & ((1 << (12 + (4 - level) * 9)) - 1)) == 0) {
+    //     printf("ADDR %lu, %lu %lu\n", pte->addr, addr, (addr & ((1 << (12 + (4 - level) * 9)) - 1)));
+    // }
     return pte->addr + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
 }
 
@@ -122,7 +130,8 @@ void MemorySimulator::add_runtime(size_t delta)
     if (wakeup_time != 0 && runtime >= wakeup_time)
     {
         wakeup_time = 0;
-        PIN_SemaphoreWait(&wakeup_sem);
+        PIN_SemaphoreSet(&wakeup_sem);
+        // PIN_Yield();
     }
 
     if (memsim_timebound != 0 && runtime >= memsim_timebound && !memsim_timebound_thread)
@@ -153,8 +162,12 @@ void MemorySimulator::memsim_nanosleep(size_t sleeptime)
         memsim_timebound = 0;
         // TODO validate sem_post is the same as SemaphoreSet
         PIN_SemaphoreSet(&timebound_sem);
+        // PIN_Yield();
     }
 
+    // if (wakeup_time != 0) {
+    //     printf("time %lu\n", wakeup_time);
+    // }
     assert(wakeup_time == 0);
     wakeup_time = runtime + sleeptime;
     PIN_SemaphoreWait(&wakeup_sem);
@@ -227,4 +240,14 @@ void MemorySimulator::WriteStatsFiles(std::string out_prefix)
         mmgr_file << endl;
     }
     mmgr_file.close();
+}
+
+CacheManager* MemorySimulator::GetCacheManager() 
+{
+    return cache_;
+}
+
+MemoryManager* MemorySimulator::GetMemoryManager() 
+{
+    return mmgr_;
 }

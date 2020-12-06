@@ -23,6 +23,11 @@ bool L1DataCache::cache_access(uint64_t paddr, memory_access_type type, uint32_t
     return false;
 }
 
+DL1::CACHE* L1DataCache::getCache() 
+{
+  return dl1;
+}
+
 bool L1DataCache::load_multi(uint64_t addr, uint32_t size)
 {
     // first level D-cache

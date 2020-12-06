@@ -1,5 +1,6 @@
 #include "mmgr_linux.h"
 #include "inttypes.h"
+#include "pin.H"
 
 int LinuxMemoryManager::listnum(struct pte *pte)
 {
@@ -228,8 +229,6 @@ void LinuxMemoryManager::init(MemorySimulator* sim)
     enqueue_fifo(&pages_free[SLOWMEM], &p[i]);
   }
 
-  // TODO
-  PIN_THREAD_UID threadUID;
   THREADID tid = PIN_SpawnInternalThread(&swapHelper, this, 0, &threadUID);
   assert(tid != INVALID_THREADID);
 }
@@ -238,7 +237,7 @@ void LinuxMemoryManager::kswapd(void *arg)
 {
   in_kswapd = true;
 
-  for(;;) {
+  while(!should_thread_close) {
     sim_->memsim_nanosleep(KSWAPD_INTERVAL);
 
     PIN_MutexLock(&global_lock);
@@ -306,4 +305,10 @@ void LinuxMemoryManager::kswapd(void *arg)
     PIN_MutexUnlock(&global_lock);
   }
 
+  return;
+}
+
+void LinuxMemoryManager::shutdown() 
+{
+  should_thread_close = true;
 }
