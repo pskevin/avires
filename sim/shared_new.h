@@ -51,7 +51,7 @@
 #define TIME_FASTMEM_WRITE	82
 
 #define TIME_SLOWMEM_READ	1000		// From DCPMM QoS slides
-#define TIME_SLOWMEM_WRITE	1000		// maybe worse?
+#define TIME_SLOWMEM_WRITE 1000		// maybe worse?
 
 #define TIME_CACHE_READ	1
 #define TIME_CACHE_WRITE 2

@@ -233,22 +233,20 @@ void LinuxMemoryManager::init(MemorySimulator* sim)
   in_kswapd = OS_TlsAlloc(NULL);
   OS_TlsSetValue(in_kswapd, reinterpret_cast<void *> (static_cast<int> (false)));
 
-  THREADID tid = PIN_SpawnInternalThread(&swapHelper, this, 0, &threadUID);
+  tid = PIN_SpawnInternalThread(&swapHelper, this, 0, &threadUID);
   assert(tid != INVALID_THREADID);
 }
 
 void LinuxMemoryManager::kswapd(void *arg)
 {
   OS_TlsSetValue(in_kswapd, reinterpret_cast<void *> (static_cast<int> (true)));
-
-  while(!should_thread_close) {
+  OS_GetTid(&native_tid);
+  // thread_should_terminate = PIN_CreateThreadDataKey(NULL);
+// tatic_cast<bool>(PIN_GetThreadData(thread_should_terminate, tid))
+  while(!thread_should_terminate) {
     sim_->memsim_nanosleep(KSWAPD_INTERVAL);
 
-    while(!PIN_MutexTryLock(&global_lock)) {
-      if (should_thread_close) {
-        return;
-      }
-    }
+    PIN_MutexLock(&global_lock);
 
     shrink_caches(&pages_active[FASTMEM], &pages_inactive[FASTMEM]);
     shrink_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]);
@@ -313,12 +311,11 @@ void LinuxMemoryManager::kswapd(void *arg)
     PIN_MutexUnlock(&global_lock);
   }
 
+  PIN_ExitThread(0);
   return;
 }
 
 void LinuxMemoryManager::shutdown() 
 {
-  printf("Shutting down\n");
-  should_thread_close = true;
-  PIN_Yield();
+  thread_should_terminate = true;
 }

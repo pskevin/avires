@@ -109,6 +109,14 @@ VOID Instruction(INS ins, VOID *v)
         }
     }
 }
+
+VOID PrepareForFini(VOID *v) {
+    if (KnobMemoryManager == 1) {
+        ((LinuxMemoryManager*) sim->GetMemoryManager())->shutdown();
+    }
+}
+
+
 VOID Fini(INT32 code, VOID *v)
 {
     // fprintf(0, "#eof\n");
@@ -122,12 +130,10 @@ VOID Fini(INT32 code, VOID *v)
     // fprintf(file, "%s", output.c_str());
     // fclose(file);
     // std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
+    printf("Fini\n");
     std::cout << "Total runtime: " << (double)sim->runtime / 1e9 << std::endl;
     sim->PrintAggregateProfiles();
     sim->WriteStatsFiles(KnobOutputPrefix);
-    if (KnobMemoryManager == 1) {
-        ((LinuxMemoryManager*) sim->GetMemoryManager())->shutdown();
-    }
 
     // std::cout << ((L1DataCache*) sim->getCacheManager())->getCache()->StatsLong();
 
@@ -193,11 +199,13 @@ int main(int argc, char * argv[])
     
     mgr->init(sim);
 
-    // Register Instruction to be called to instrument instructions
-    INS_AddInstrumentFunction(Instruction, 0);
+    PIN_AddPrepareForFiniFunction(PrepareForFini, 0);
 
     // Register Fini to be called when the application exits
     PIN_AddFiniFunction(Fini, 0);
+
+    // Register Instruction to be called to instrument instructions
+    INS_AddInstrumentFunction(Instruction, 0);
     
     // Start the program, never returns
     PIN_StartProgram();
