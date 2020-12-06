@@ -74,6 +74,8 @@ class MemorySimulator {
     void PrintInstructionProfiles();
     void PrintAggregateProfiles();
     void WriteStatsFiles(std::string out_prefix);
+    CacheManager* GetCacheManager();
+    MemoryManager* GetMemoryManager();
     size_t runtime = 0;
 
   MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) :
@@ -81,6 +83,7 @@ class MemorySimulator {
     cache_agg_profile(COUNTER_HM_NUM, 0), tlb_agg_profile(COUNTER_HM_NUM, 0), mmgr_agg_profile(COUNTER_MEM_NUM, 0) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
+    PIN_MutexInit(&sem_mutex);
 
     tlb_profile.SetKeyName("iaddr          ");
     tlb_profile.SetCounterName("tlb:miss        tlb:hit");
@@ -104,6 +107,7 @@ class MemorySimulator {
     bool	memsim_timebound_thread = false;
     
     PIN_SEMAPHORE wakeup_sem, timebound_sem;
+    PIN_MUTEX sem_mutex;
     
     pte* cr3;
     MemoryManager* mmgr_;

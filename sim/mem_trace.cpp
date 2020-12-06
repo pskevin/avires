@@ -124,6 +124,10 @@ VOID Fini(INT32 code, VOID *v)
     // std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
     sim->PrintAggregateProfiles();
     sim->WriteStatsFiles(KnobOutputPrefix);
+    if (KnobMemoryManager == 1) {
+        ((LinuxMemoryManager*) sim->GetMemoryManager())->shutdown();
+    }
+    // std::cout << ((L1DataCache*) sim->getCacheManager())->getCache()->StatsLong();
 
 }
 
@@ -148,7 +152,10 @@ INT32 Usage()
 /* ===================================================================== */
 
 int main(int argc, char * argv[])
-{  
+{   
+    // Initialize pin
+    if (PIN_Init(argc, argv)) return Usage(); 
+
     MemoryManager* mgr;
 
     switch (KnobMemoryManager)
@@ -181,9 +188,6 @@ int main(int argc, char * argv[])
     pf_threshold[COUNTER_PAGEFAULT] = KnobThresholdHit.Value();
 
     sim = new MemorySimulator(mgr, tlb, l1d, hm_threshold, pf_threshold);
-    
-    // Initialize pin
-    if (PIN_Init(argc, argv)) return Usage();
     
     mgr->init(sim);
 
