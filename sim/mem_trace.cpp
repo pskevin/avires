@@ -122,11 +122,13 @@ VOID Fini(INT32 code, VOID *v)
     // fprintf(file, "%s", output.c_str());
     // fclose(file);
     // std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
+    std::cout << "Total runtime: " << (double)sim->runtime / 1e9 << std::endl;
     sim->PrintAggregateProfiles();
     sim->WriteStatsFiles(KnobOutputPrefix);
     if (KnobMemoryManager == 1) {
         ((LinuxMemoryManager*) sim->GetMemoryManager())->shutdown();
     }
+
     // std::cout << ((L1DataCache*) sim->getCacheManager())->getCache()->StatsLong();
 
 }

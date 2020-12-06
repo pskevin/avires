@@ -145,7 +145,7 @@ uint64_t LinuxMemoryManager::getmem(uint64_t addr, struct pte *pte)
     if(pages_inactive[FASTMEM].numentries == 0) {
       // Force some pages down if there aren't any
       shrink_caches(&pages_active[FASTMEM], &pages_inactive[FASTMEM]);
-      /* shrink_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]); */
+      shrink_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]);
     }
 
     // Move a cold page from fastmem to slowmem

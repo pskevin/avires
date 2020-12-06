@@ -142,7 +142,7 @@ void MemorySimulator::add_runtime(size_t delta)
 #ifndef LOG_DEBUG
     if (runtime - oldruntime > 1000000)
     { // Every millisecond
-        fprintf(stderr, "Runtime: %.3f       \r", (float)runtime / 1000000000.0);
+        fprintf(stderr, "Runtime: %.3f       \r", (double)runtime / 1000000000.0);
         oldruntime = runtime;
     }
 #endif
