@@ -76,7 +76,7 @@ class MemorySimulator {
     void WriteStatsFiles(std::string out_prefix);
     CacheManager* GetCacheManager();
     MemoryManager* GetMemoryManager();
-    size_t runtime = 0;
+    volatile size_t runtime = 0;
 
   MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) :
     mmgr_(mgr), tlb_(tlb), cache_(cache),
@@ -104,8 +104,8 @@ class MemorySimulator {
   private:
     uint64_t walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level);
     // these should be atomic (maybe need mutexes?)
-    size_t wakeup_time = 0;
-    size_t memsim_timebound = 0;
+    volatile size_t wakeup_time = 0;
+    volatile size_t memsim_timebound = 0;
     
     PIN_SEMAPHORE wakeup_sem, timebound_sem;
     
