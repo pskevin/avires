@@ -1,12 +1,40 @@
-#include "mmgr_linux.h"
-#include "inttypes.h"
-#include "pin.H"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <pthread.h>
+#include <assert.h>
+#include <inttypes.h>
 
-int LinuxMemoryManager::listnum(struct pte *pte)
+#include "shared.h"
+
+#define NR_PAGES		32
+#define KSWAPD_INTERVAL		S(1)	// In ns
+
+#define FASTMEM_PAGES	(FASTMEM_SIZE / BASE_PAGE_SIZE)
+#define SLOWMEM_PAGES	(SLOWMEM_SIZE / BASE_PAGE_SIZE)
+
+struct page {
+  struct page	*next, *prev;
+  uint64_t	framenum;
+  struct pte	*pte;
+};
+
+struct fifo_queue {
+  struct page	*first, *last;
+  size_t	numentries;
+};
+
+static struct pte pml4[512]; // Top-level page table (we only emulate one process)
+static struct fifo_queue pages_active[NMEMTYPES], pages_inactive[NMEMTYPES], pages_free[NMEMTYPES];
+static pthread_mutex_t global_lock = PTHREAD_MUTEX_INITIALIZER;
+static bool __thread in_kswapd = false;
+
+int listnum(struct pte *pte)
 {
   int listnum = -1;
   
-  PIN_MutexLock(&global_lock);
+  pthread_mutex_lock(&global_lock);
   
   uint64_t framenum = (pte->addr & SLOWMEM_MASK) / BASE_PAGE_SIZE;
 
@@ -40,11 +68,11 @@ int LinuxMemoryManager::listnum(struct pte *pte)
 
  out:
   assert(listnum != -1);
-  PIN_MutexUnlock(&global_lock);
+  pthread_mutex_unlock(&global_lock);
   return listnum;
 }
 
-void LinuxMemoryManager::enqueue_fifo(struct fifo_queue *queue, struct page *entry)
+static void enqueue_fifo(struct fifo_queue *queue, struct page *entry)
 {
   assert(entry->prev == NULL);
   entry->next = queue->first;
@@ -61,7 +89,7 @@ void LinuxMemoryManager::enqueue_fifo(struct fifo_queue *queue, struct page *ent
   queue->numentries++;
 }
 
-struct page * LinuxMemoryManager::dequeue_fifo(struct fifo_queue *queue)
+static struct page *dequeue_fifo(struct fifo_queue *queue)
 {
   struct page *ret = queue->last;
 
@@ -83,7 +111,7 @@ struct page * LinuxMemoryManager::dequeue_fifo(struct fifo_queue *queue)
   return ret;
 }
 
-void LinuxMemoryManager::shrink_caches(struct fifo_queue *pages_active,
+static void shrink_caches(struct fifo_queue *pages_active,
 			  struct fifo_queue *pages_inactive)
 {
   size_t nr_pages = 1;
@@ -97,7 +125,7 @@ void LinuxMemoryManager::shrink_caches(struct fifo_queue *pages_active,
     if(p->pte->accessed) {
       // XXX: Dangerous. Introduce soft accessed bit instead, like Linux?
       p->pte->accessed = false;
-      sim_->tlb_shootdown(p->framenum * BASE_PAGE_SIZE);
+      tlb_shootdown(p->framenum * BASE_PAGE_SIZE);
       enqueue_fifo(pages_active, p);
     } else {
       // XXX: Dangerous. Introduce soft accessed bit instead, like Linux?
@@ -108,7 +136,7 @@ void LinuxMemoryManager::shrink_caches(struct fifo_queue *pages_active,
   }
 }
 
-void LinuxMemoryManager::expand_caches(struct fifo_queue *pages_active,
+static void expand_caches(struct fifo_queue *pages_active,
 			  struct fifo_queue *pages_inactive)
 {
   size_t nr_pages = pages_inactive->numentries;
@@ -125,9 +153,84 @@ void LinuxMemoryManager::expand_caches(struct fifo_queue *pages_active,
   }
 }
 
-uint64_t LinuxMemoryManager::getmem(uint64_t addr, struct pte *pte)
+static void *kswapd(void *arg)
 {
-  PIN_MutexLock(&global_lock);
+  in_kswapd = true;
+
+  for(;;) {
+    memsim_nanosleep(KSWAPD_INTERVAL);
+
+    pthread_mutex_lock(&global_lock);
+
+    shrink_caches(&pages_active[FASTMEM], &pages_inactive[FASTMEM]);
+    shrink_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]);
+
+    // Move_hot
+    expand_caches(&pages_active[FASTMEM], &pages_inactive[FASTMEM]);
+    expand_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]);
+
+    // Move hot pages from slowmem to fastmem
+    for(struct page *p = dequeue_fifo(&pages_active[SLOWMEM]); p != NULL;
+	p = dequeue_fifo(&pages_active[SLOWMEM])) {
+      for(int tries = 0; tries < 2; tries++) {
+	struct page *np = dequeue_fifo(&pages_free[FASTMEM]);
+
+	if(np != NULL) {
+	  LOG("cold (%" PRIu64 ") -> hot (%" PRIu64 "), "
+	      "slowmem.active = %zu, slowmem.inactive = %zu\n",
+	      p->framenum, np->framenum,
+	      pages_active[SLOWMEM].numentries,
+	      pages_inactive[SLOWMEM].numentries);
+
+	  // Remap page
+	  np->pte = p->pte;
+	  np->pte->addr = np->framenum * BASE_PAGE_SIZE;
+	  tlb_shootdown(0);
+
+	  // Put on fastmem active list
+	  enqueue_fifo(&pages_active[FASTMEM], np);
+
+	  // Free slowmem
+	  enqueue_fifo(&pages_free[SLOWMEM], p);
+
+	  break;
+	}
+
+	// Not moved - Out of fastmem - move cold page down
+	struct page *cp = dequeue_fifo(&pages_inactive[FASTMEM]);
+	if(cp == NULL) {
+	  // All fastmem pages are hot -- bail out
+	  enqueue_fifo(&pages_active[SLOWMEM], p);
+	  goto out;
+	}
+
+	np = dequeue_fifo(&pages_free[SLOWMEM]);
+	if(np != NULL) {
+	  // Remap page
+	  np->pte = cp->pte;
+	  np->pte->addr = (np->framenum * BASE_PAGE_SIZE) | SLOWMEM_BIT;
+	  tlb_shootdown(0);
+
+	  // Put on slowmem inactive list
+	  enqueue_fifo(&pages_inactive[SLOWMEM], np);
+
+	  // Free fastmem
+	  enqueue_fifo(&pages_free[FASTMEM], cp);
+	  /* fprintf(stderr, "%zu hot -> cold\n", runtime); */
+	}
+      }
+    }
+
+  out:
+    pthread_mutex_unlock(&global_lock);
+  }
+
+  return NULL;
+}
+
+static uint64_t getmem(uint64_t addr, struct pte *pte)
+{
+  pthread_mutex_lock(&global_lock);
 
   for(int tries = 0; tries < 2; tries++) {
     // Allocate from fastmem, put on active FIFO queue
@@ -137,7 +240,7 @@ uint64_t LinuxMemoryManager::getmem(uint64_t addr, struct pte *pte)
       newpage->pte = pte;
       enqueue_fifo(&pages_active[FASTMEM], newpage);
 
-      PIN_MutexUnlock(&global_lock);
+      pthread_mutex_unlock(&global_lock);
       return newpage->framenum * BASE_PAGE_SIZE;
     }
 
@@ -153,17 +256,17 @@ uint64_t LinuxMemoryManager::getmem(uint64_t addr, struct pte *pte)
     struct page *np = dequeue_fifo(&pages_free[SLOWMEM]);
     if(np != NULL) {
       // Emulate memory copy from fast to slow mem
-      if(!static_cast<bool>(OS_TlsGetValue(in_kswapd))) {
-        sim_->add_runtime(TIME_SLOWMOVE);
+      if(!in_kswapd) {
+	add_runtime(TIME_SLOWMOVE);
       }
 
-      MEMSIM_LOG("OOM hot (%" PRIu64 ") -> cold (%" PRIu64 ")\n", sim_->runtime,
-        p->framenum, np->framenum);
+      LOG("OOM hot (%" PRIu64 ") -> cold (%" PRIu64 ")\n",
+	  p->framenum, np->framenum);
 
       // Remap page
       np->pte = p->pte;
       np->pte->addr = (np->framenum * BASE_PAGE_SIZE) | SLOWMEM_BIT;
-      sim_->tlb_shootdown(0);
+      tlb_shootdown(0);
 
       // Put on slowmem inactive list
       enqueue_fifo(&pages_inactive[SLOWMEM], np);
@@ -173,11 +276,11 @@ uint64_t LinuxMemoryManager::getmem(uint64_t addr, struct pte *pte)
     }
   }
 
-  PIN_MutexUnlock(&global_lock);
+  pthread_mutex_unlock(&global_lock);
   assert(!"Out of memory");
 }
 
-pte * LinuxMemoryManager::alloc_ptables(uint64_t addr, enum pagetypes pt)
+static struct pte *alloc_ptables(uint64_t addr)
 {
   struct pte *ptable = pml4, *pte;
 
@@ -187,7 +290,7 @@ pte * LinuxMemoryManager::alloc_ptables(uint64_t addr, enum pagetypes pt)
 
     if(!pte->present) {
       pte->present = true;
-      pte->next = (struct pte *) calloc(512, sizeof(struct pte));
+      pte->next = calloc(512, sizeof(struct pte));
     }
 
     ptable = pte->next;
@@ -197,11 +300,11 @@ pte * LinuxMemoryManager::alloc_ptables(uint64_t addr, enum pagetypes pt)
   return &ptable[(addr >> (48 - (4 * 9))) & 511];
 }
 
-void LinuxMemoryManager::pagefault(uint64_t addr, bool readonly)
+void pagefault(uint64_t addr, bool readonly)
 {
   assert(!readonly);
   // Allocate page tables
-  struct pte *pte = alloc_ptables(addr, BASE_PAGE);
+  struct pte *pte = alloc_ptables(addr);
   pte->present = true;
   pte->pagemap = true;
 
@@ -209,110 +312,22 @@ void LinuxMemoryManager::pagefault(uint64_t addr, bool readonly)
   assert((pte->addr & BASE_PAGE_MASK) == 0);	// Must be aligned
 }
 
-void swapHelper(void* mgr) {
-  static_cast<LinuxMemoryManager*>(mgr)->kswapd(nullptr);
-}
-
-void LinuxMemoryManager::init(MemorySimulator* sim)
+void mmgr_init(void)
 {
-  sim_ = sim;
-  sim->setCR3(pml4);
-  PIN_MutexInit(&global_lock);
-  struct page *p = (page*)calloc(FASTMEM_PAGES, sizeof(struct page));
-  for(uint32_t i = 0; i < FASTMEM_PAGES; i++) {
+  cr3 = pml4;
+
+  struct page *p = calloc(FASTMEM_PAGES, sizeof(struct page));
+  for(int i = 0; i < FASTMEM_PAGES; i++) {
     p[i].framenum = i;
     enqueue_fifo(&pages_free[FASTMEM], &p[i]);
   }
-  p = (page*) calloc(SLOWMEM_PAGES, sizeof(struct page));
-  for(uint32_t i = 0; i < SLOWMEM_PAGES; i++) {
+  p = calloc(SLOWMEM_PAGES, sizeof(struct page));
+  for(int i = 0; i < SLOWMEM_PAGES; i++) {
     p[i].framenum = i;
     enqueue_fifo(&pages_free[SLOWMEM], &p[i]);
   }
-
-
-  in_kswapd = OS_TlsAlloc(NULL);
-  OS_TlsSetValue(in_kswapd, reinterpret_cast<void *> (static_cast<int> (false)));
-
-  THREADID tid = PIN_SpawnInternalThread(&swapHelper, this, 0, &threadUID);
-  assert(tid != INVALID_THREADID);
-}
-
-void LinuxMemoryManager::kswapd(void *arg)
-{
-  OS_TlsSetValue(in_kswapd, reinterpret_cast<void *> (static_cast<int> (true)));
-
-  while(!should_thread_close) {
-    sim_->memsim_nanosleep(KSWAPD_INTERVAL);
-
-    PIN_MutexLock(&global_lock);
-
-    shrink_caches(&pages_active[FASTMEM], &pages_inactive[FASTMEM]);
-    shrink_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]);
-
-    // Move_hot
-    expand_caches(&pages_active[FASTMEM], &pages_inactive[FASTMEM]);
-    expand_caches(&pages_active[SLOWMEM], &pages_inactive[SLOWMEM]);
-
-    // Move hot pages from slowmem to fastmem
-    for(struct page *p = dequeue_fifo(&pages_active[SLOWMEM]); p != NULL; p = dequeue_fifo(&pages_active[SLOWMEM])) {
-      for(int tries = 0; tries < 2; tries++) {
-        struct page *np = dequeue_fifo(&pages_free[FASTMEM]);
-
-        if(np != NULL) {
-          MEMSIM_LOG("cold (%" PRIu64 ") -> hot (%" PRIu64 "), "
-              "slowmem.active = %zu, slowmem.inactive = %zu\n",
-              sim_->runtime,
-              p->framenum, np->framenum,
-              pages_active[SLOWMEM].numentries,
-              pages_inactive[SLOWMEM].numentries);
-
-          // Remap page
-          np->pte = p->pte;
-          np->pte->addr = np->framenum * BASE_PAGE_SIZE;
-          sim_->tlb_shootdown(0);
-
-          // Put on fastmem active list
-          enqueue_fifo(&pages_active[FASTMEM], np);
-
-          // Free slowmem
-          enqueue_fifo(&pages_free[SLOWMEM], p);
-
-          break;
-        }
-
-        // Not moved - Out of fastmem - move cold page down
-        struct page *cp = dequeue_fifo(&pages_inactive[FASTMEM]);
-        if(cp == NULL) {
-          // All fastmem pages are hot -- bail out
-          enqueue_fifo(&pages_active[SLOWMEM], p);
-          goto out;
-        }
-
-        np = dequeue_fifo(&pages_free[SLOWMEM]);
-        if(np != NULL) {
-          // Remap page
-          np->pte = cp->pte;
-          np->pte->addr = (np->framenum * BASE_PAGE_SIZE) | SLOWMEM_BIT;
-          sim_->tlb_shootdown(0);
-
-          // Put on slowmem inactive list
-          enqueue_fifo(&pages_inactive[SLOWMEM], np);
-
-          // Free fastmem
-          enqueue_fifo(&pages_free[FASTMEM], cp);
-          /* fprintf(stderr, "%zu hot -> cold\n", runtime); */
-        }
-      }
-    }
-
-  out:
-    PIN_MutexUnlock(&global_lock);
-  }
-
-  return;
-}
-
-void LinuxMemoryManager::shutdown() 
-{
-  should_thread_close = true;
+  
+  pthread_t thread;
+  int r = pthread_create(&thread, NULL, kswapd, NULL);
+  assert(r == 0);
 }

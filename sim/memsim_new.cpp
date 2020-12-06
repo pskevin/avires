@@ -165,9 +165,6 @@ void MemorySimulator::memsim_nanosleep(size_t sleeptime)
         // PIN_Yield();
     }
 
-    // if (wakeup_time != 0) {
-    //     printf("time %lu\n", wakeup_time);
-    // }
     assert(wakeup_time == 0);
     wakeup_time = runtime + sleeptime;
     PIN_SemaphoreWait(&wakeup_sem);
