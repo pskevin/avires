@@ -19,14 +19,8 @@
 #include "four_level_tlb.h"
 #include "l1_data_cache.h"
 
-
-#define MEMORY_MANAGER 0
-
-#if MEMORY_MANAGER == 0
-    #include "mmgr_simple.h"
-#elif MEMORY_MANAGER == 1
-    #include "mmgr_linux.h"
-#endif
+#include "mmgr_simple.h"
+#include "mmgr_linux.h"
 
 // std::unordered_map<uint64_t, int> hashmap;
 
@@ -44,6 +38,9 @@ KNOB<uint64_t> KnobThresholdMiss(KNOB_MODE_WRITEONCE, "pintool",
    "rm","0", "only report memops with miss count above threshold");
 KNOB<uint64_t> KnobThresholdPagefault(KNOB_MODE_WRITEONCE, "pintool",
    "rf","0", "only report memops with pagefault count above threshold");
+
+KNOB<uint32_t> KnobMemoryManager(KNOB_MODE_WRITEONCE, "pintool",
+   "mm","0", "Defines which memory manager to use. 0=simple, 1=linux");
 // TODO more knobs
 
 MemorySimulator* sim;
@@ -152,13 +149,21 @@ INT32 Usage()
 
 int main(int argc, char * argv[])
 {  
-    #if MEMORY_MANAGER == 0
-        SimpleMemoryManager* mgr = new SimpleMemoryManager();
-    #elif MEMORY_MANAGER == 1
-        LinuxMemoryManager* mgr = new LinuxMemoryManager();
-    #else
-        exit(1);
-    #endif
+    MemoryManager* mgr;
+
+    switch (KnobMemoryManager)
+    {
+        case 0:
+            mgr = new SimpleMemoryManager();
+            break;
+        case 1:
+            mgr = new LinuxMemoryManager();
+            break;
+
+    default:
+        return 1;
+        break;
+    }
 
     // printf("INITIALIZING CACHE\n");
     L1DataCache* l1d = new L1DataCache();
