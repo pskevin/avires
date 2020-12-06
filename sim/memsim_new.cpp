@@ -1,6 +1,7 @@
 #include "memsim_new.h"
 #include <assert.h>
 #include <iostream>
+#include <fstream>
 #include "pin.H"
 
 void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT insaddr)
@@ -176,10 +177,7 @@ void MemorySimulator::PrintInstructionProfiles()
 
 void MemorySimulator::PrintAggregateProfiles()
 {
-
     // TODO: Figure out how to do this...kinda sucks that we can't aggregate the values directly from the other ones
-
-
     std::cout << "TLB Profile: " << std::endl;
     std::cout << "Miss\t\tHit" << std::endl;
     for(const auto& val : tlb_agg_profile) {
@@ -198,4 +196,35 @@ void MemorySimulator::PrintAggregateProfiles()
         std::cout << val << "\t\t";
     }
     std::cout <<  std::endl;
+}
+
+void MemorySimulator::WriteStatsFiles(std::string out_prefix)
+{
+    std::ofstream cache_file((out_prefix + "cache.out").c_str(), ios::out | ios::app);
+    if (cache_file.is_open()) {
+        for(const auto& val : cache_agg_profile) {
+            cache_file << val << " ";
+        }
+        cache_file << endl;
+    }
+    cache_file.close();
+
+    std::ofstream tlb_file((out_prefix + "tlb.out").c_str(), ios::out | ios::app);
+    if (tlb_file.is_open()) {
+        for(const auto& val : tlb_agg_profile) {
+            tlb_file << val << " ";
+        }
+        tlb_file << endl;
+    }
+    tlb_file.close();
+
+
+    std::ofstream mmgr_file((out_prefix + "mmgr.out").c_str(), ios::out | ios::app);
+    if (mmgr_file.is_open()) {
+        for(const auto& val : mmgr_agg_profile) {
+            mmgr_file << val << " ";
+        }
+        mmgr_file << endl;
+    }
+    mmgr_file.close();
 }

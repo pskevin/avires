@@ -36,7 +36,8 @@ using std::ios;
 using std::string;
 using std::endl;
 
-
+KNOB<string> KnobOutputPrefix(KNOB_MODE_WRITEONCE,    "pintool",
+    "o", "experiments/sim_", "specify stats output directory");
 KNOB<uint64_t> KnobThresholdHit(KNOB_MODE_WRITEONCE , "pintool",
    "rh", "0", "only report memops with hit count above threshold");
 KNOB<uint64_t> KnobThresholdMiss(KNOB_MODE_WRITEONCE, "pintool",
@@ -125,7 +126,8 @@ VOID Fini(INT32 code, VOID *v)
     // fclose(file);
     // std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
     sim->PrintAggregateProfiles();
-    
+    sim->WriteStatsFiles(KnobOutputPrefix);
+
 }
 
 /* ===================================================================== */
