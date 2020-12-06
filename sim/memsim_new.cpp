@@ -134,7 +134,7 @@ void MemorySimulator::add_runtime(size_t delta)
         // PIN_Yield();
     }
 
-    if (memsim_timebound != 0 && runtime >= memsim_timebound && !memsim_timebound_thread)
+    if (memsim_timebound != 0 && runtime >= memsim_timebound && !static_cast<bool>(OS_TlsGetValue(memsim_timebound_thread)))
     {
         PIN_SemaphoreWait(&timebound_sem);
     }

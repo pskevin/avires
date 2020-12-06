@@ -39,8 +39,10 @@ class LinuxMemoryManager: public MemoryManager {
     struct fifo_queue pages_active[NMEMTYPES], pages_inactive[NMEMTYPES], pages_free[NMEMTYPES];
     PIN_MUTEX global_lock;
     MemorySimulator* sim_;
-    PIN_TLS_INDEX in_kswapd;
+    PIN_TLS_INDEX in_kswapd; 
 
     PIN_THREAD_UID threadUID;
-    volatile bool should_thread_close = false;
+    volatile BOOL thread_should_terminate;
+    THREADID tid;
+    NATIVE_TID native_tid;
 };
