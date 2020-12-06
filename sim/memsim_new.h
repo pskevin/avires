@@ -83,7 +83,9 @@ class MemorySimulator {
     cache_agg_profile(COUNTER_HM_NUM, 0), tlb_agg_profile(COUNTER_HM_NUM, 0), mmgr_agg_profile(COUNTER_MEM_NUM, 0) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
-    PIN_MutexInit(&sem_mutex);
+
+    memsim_timebound_thread = OS_TlsAlloc(NULL);
+    OS_TlsSetValue(memsim_timebound_thread, reinterpret_cast<void *> (static_cast<int> (false)));
 
     tlb_profile.SetKeyName("iaddr          ");
     tlb_profile.SetCounterName("tlb:miss        tlb:hit");
@@ -101,13 +103,11 @@ class MemorySimulator {
   
   private:
     uint64_t walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level);
+    // these should be atomic (maybe need mutexes?)
     size_t wakeup_time = 0;
     size_t memsim_timebound = 0;
-
-    bool	memsim_timebound_thread = false;
     
     PIN_SEMAPHORE wakeup_sem, timebound_sem;
-    PIN_MUTEX sem_mutex;
     
     pte* cr3;
     MemoryManager* mmgr_;
@@ -124,6 +124,8 @@ class MemorySimulator {
     COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> tlb_profile;
     // holds the counter for pagefaults
     COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_PAGEFAULTS> mmgr_profile;
+
+    PIN_TLS_INDEX memsim_timebound_thread;
 };
 
 // From Wikipedia

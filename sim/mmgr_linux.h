@@ -38,8 +38,8 @@ class LinuxMemoryManager: public MemoryManager {
     struct pte pml4[512]; // Top-level page table (we only emulate one process)
     struct fifo_queue pages_active[NMEMTYPES], pages_inactive[NMEMTYPES], pages_free[NMEMTYPES];
     PIN_MUTEX global_lock;
-    volatile bool in_kswapd = false;
     MemorySimulator* sim_;
+    PIN_TLS_INDEX in_kswapd;
 
     PIN_THREAD_UID threadUID;
     volatile bool should_thread_close = false;
