@@ -73,6 +73,7 @@ class MemorySimulator {
     void memsim_nanosleep(size_t sleeptime);
     void PrintInstructionProfiles();
     void PrintAggregateProfiles();
+    void WriteStatsFiles(std::string out_prefix);
     size_t runtime = 0;
 
   MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) :
