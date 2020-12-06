@@ -158,16 +158,16 @@ void MemorySimulator::memsim_nanosleep(size_t sleeptime)
 {
     if (memsim_timebound != 0)
     {
-        assert(memsim_timebound_thread == true);
+        assert(static_cast<bool>(OS_TlsGetValue(memsim_timebound_thread)) == true);
         memsim_timebound = 0;
         // TODO validate sem_post is the same as SemaphoreSet
         PIN_SemaphoreSet(&timebound_sem);
         // PIN_Yield();
     }
-
-    // assert(wakeup_time == 0);
-    wakeup_time = runtime + sleeptime;
+    
     PIN_SemaphoreWait(&wakeup_sem);
+    assert(wakeup_time == 0);
+    wakeup_time = runtime + sleeptime;
 }
 
 void MemorySimulator::setCR3(pte *ptr)
