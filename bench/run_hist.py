@@ -27,7 +27,7 @@ def run_experiment(cmd_str, tries=math.inf):
             if success:
                 time_taken = end-start
                 print("Ran successfully in {}\n".format(time_taken))
-                wtr.writerow([cmd_str, time_taken])
+                # wtr.writerow([cmd_str, time_taken])
             break
 
 if __name__ == '__main__':
@@ -35,12 +35,12 @@ if __name__ == '__main__':
 
     gups_bin = '../apps/gups/obj/gups_rndm_write.o'
     gups_configs =[
-        '1 1000 15 8 0 0',
+        # '1 1000 15 8 0 0',
         '1 10000 15 8 0 0',
-        '1 100000 15 8 0 0',
-        '1 1000000 15 8 0 0',
-        '1 10000000 15 8 0 0',
-        '1 100000000 15 8 0 0',
+        # '1 100000 15 8 0 0',
+        # '1 1000000 15 8 0 0',
+        # '1 10000000 15 8 0 0',
+        # '1 100000000 15 8 0 0',
     ]
 
 
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     #     run_experiment(gups_cmd)
 
     # Time GUPS + Pin
-    wtr = csv.writer(open ('./results/timings/pin_timings_new.csv', 'w'), delimiter=',', lineterminator='\n')
+    # wtr = csv.writer(open ('./results/pin_timings.csv', 'w'), delimiter=',', lineterminator='\n')
 
     for config in gups_configs[:4]:
         gups_cmd = gups_bin + ' ' + config

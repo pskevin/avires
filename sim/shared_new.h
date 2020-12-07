@@ -41,9 +41,9 @@
 
 #define TLB_L1_GIGA_ENTRIES 1
 #define TLB_L1_HUGE_ENTRIES 4
-#define TLB_L1_BASE_ENTRIES 16
+#define TLB_L1_BASE_ENTRIES 8
 #define TLB_L2_GIGA_ENTRIES 4
-#define TLB_L2_HUGE_BASE_ENTRIES 48
+#define TLB_L2_HUGE_BASE_ENTRIES 32
 
 // Simulated execution times in ns
 #define TIME_PAGEFAULT		2000		// pagefault interrupt
