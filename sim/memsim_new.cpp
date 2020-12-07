@@ -7,7 +7,7 @@
 void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t timestep)
 {
     int level = -1;
-    assert(timestep == v_addrs.size());
+    // assert(timestep == v_addrs.size());
     v_addrs.push_back(addr);
 
     // Must be canonical addr
@@ -17,14 +17,15 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     uint64_t paddr = 0;
     if ((te = tlb_->alltlb_lookup(addr, &level)) != NULL)
     {
-        tlb_agg_profile[COUNTER_TLB_HIT]++;
-        tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_HIT]++;
+        // tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_HIT]++;
+        tlb_profile.Increment(timestep, "HIT");
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
     else
     {
-        tlb_agg_profile[COUNTER_TLB_MISS]++;
-        tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_MISS]++;
+        // tlb_agg_profile[COUNTER_TLB_MISS]++;
+        // tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_MISS]++;
+        tlb_profile.Increment(timestep, "MISS");
 
         paddr = walk_page_table(addr, type, timestep, level);
         assert(level >= 2 && level <= 4);
@@ -39,9 +40,8 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     }
 
     bool cachehit = cache_->cache_access(paddr, type, size);
-    const CACHE_COUNTER counter = cachehit ? COUNTER_CACHE_HIT : COUNTER_CACHE_MISS;
-    cache_agg_profile[counter]++;
-    cache_profile[cache_profile.Map(timestep)][counter]++;
+    const std::string counter = cachehit ? "HIT" : "MISS";
+    cache_profile.Increment(timestep, counter);
 
     if(cachehit) 
     {
@@ -63,9 +63,8 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
         {
             add_runtime((paddr & SLOWMEM_BIT) ? TIME_SLOWMEM_WRITE : TIME_FASTMEM_WRITE);
         }
-        const MEM_COUNTER counter = (paddr & SLOWMEM_BIT) ? COUNTER_SLOWMEM : COUNTER_FASTMEM;
-        mmgr_agg_profile[counter]++;
-        mmgr_profile[mmgr_profile.Map(timestep)][counter]++;
+        const std::string counter = (paddr & SLOWMEM_BIT) ? "SLOWMEM" : "FASTMEM";
+        mmgr_profile.Increment(timestep, counter);
     }
 }
 
@@ -84,8 +83,9 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
         {
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
-            mmgr_agg_profile[COUNTER_PAGEFAULT]++;
-            mmgr_profile[mmgr_profile.Map(timestep)][COUNTER_PAGEFAULT]++;
+            mmgr_profile.Increment(timestep, "PAGEFAULT");
+            // mmgr_agg_profile[COUNTER_PAGEFAULT]++;
+            // mmgr_profile[mmgr_profile.Map(timestep)][COUNTER_PAGEFAULT]++;
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
         }
@@ -179,82 +179,65 @@ void MemorySimulator::setCR3(pte *ptr)
 void MemorySimulator::PrintInstructionProfiles()
 {
     std::cout << "TLB Profile: " << std::endl;
-    std::cout << tlb_profile.StringLong() << std::endl;
+    std::cout << tlb_profile.String() << std::endl;
     std::cout << "Cache Profile: " << std::endl;
-    std::cout << cache_profile.StringLong() << std::endl;
+    std::cout << cache_profile.String() << std::endl;
     std::cout << "MMGR Profile: " << std::endl;
-    std::cout << mmgr_profile.StringLong() << std::endl;
+    std::cout << mmgr_profile.String() << std::endl;
 }
 
 void MemorySimulator::PrintAggregateProfiles()
 {
     // TODO: Figure out how to do this...kinda sucks that we can't aggregate the values directly from the other ones
     std::cout << "TLB Profile: " << std::endl;
-    std::cout << "Miss\t\tHit" << std::endl;
-    for(const auto& val : tlb_agg_profile) {
-        std::cout << val << "\t\t";
-    }
-    std::cout <<  std::endl;
+    std::cout << tlb_profile.AggregateString() << std::endl;
+
+    std::cout << std::endl;
     std::cout << "Cache Profile: " << std::endl;
-    std::cout << "Miss\t\tHit" << std::endl;
-    for(const auto& val : cache_agg_profile) {
-        std::cout << val << "\t\t";
-    }
-    std::cout <<  std::endl;
+    std::cout << cache_profile.AggregateString() << std::endl;
+
+    std::cout << std::endl;
     std::cout << "MMGR Profile: " << std::endl;
-    std::cout << "Pagefaults\t\tSLOWMEM\t\tFASTMEM" << std::endl;
-    for(const auto& val : mmgr_agg_profile) {
-        std::cout << val << "\t\t";
-    }
-    std::cout <<  std::endl;
+    std::cout << mmgr_profile.AggregateString() << std::endl;
 }
 
 void MemorySimulator::WriteStatsFiles(std::string out_prefix)
 {
     std::ofstream cache_agg_file((out_prefix + "cache_agg.out").c_str(), ios::out | ios::app);
     if (cache_agg_file.is_open()) {
-        for(const auto& val : cache_agg_profile) {
-            cache_agg_file << val << " ";
-        }
-        cache_agg_file << endl;
+        cache_agg_file << cache_profile.AggregateString() << std::endl;
     }
     cache_agg_file.close();
 
     std::ofstream tlb_agg_file((out_prefix + "tlb_agg.out").c_str(), ios::out | ios::app);
     if (tlb_agg_file.is_open()) {
-        for(const auto& val : tlb_agg_profile) {
-            tlb_agg_file << val << " ";
-        }
-        tlb_agg_file << endl;
+        tlb_agg_file << tlb_profile.AggregateString() << std::endl;
     }
     tlb_agg_file.close();
 
 
     std::ofstream mmgr_agg_file((out_prefix + "mmgr_agg.out").c_str(), ios::out | ios::app);
     if (mmgr_agg_file.is_open()) {
-        for(const auto& val : mmgr_agg_profile) {
-            mmgr_agg_file << val << " ";
-        }
-        mmgr_agg_file << endl;
+        mmgr_agg_file << mmgr_profile.AggregateString() << std::endl;
     }
     mmgr_agg_file.close();
 
 
     std::ofstream cache_file((out_prefix + "cache.out").c_str(), ios::out);
     if (cache_file.is_open()) {
-        cache_file << cache_profile.StringLong() << std::endl;
+        cache_file << cache_profile.String() << std::endl;
     }
     cache_file.close();
 
     std::ofstream tlb_file((out_prefix + "tlb.out").c_str(), ios::out);
     if (tlb_file.is_open()) {
-        tlb_file << tlb_profile.StringLong() << std::endl;
+        tlb_file << tlb_profile.String() << std::endl;
     }
     tlb_file.close();
 
     std::ofstream mmgr_file((out_prefix + "mmgr.out").c_str(), ios::out);
     if (mmgr_file.is_open()) {
-        mmgr_file << mmgr_profile.StringLong() << std::endl;
+        mmgr_file << mmgr_profile.String() << std::endl;
     }
     mmgr_file.close();
 
