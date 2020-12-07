@@ -17,14 +17,11 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     uint64_t paddr = 0;
     if ((te = tlb_->alltlb_lookup(addr, &level)) != NULL)
     {
-        // tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_HIT]++;
         tlb_profile.Increment(timestep, "HIT");
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
     else
     {
-        // tlb_agg_profile[COUNTER_TLB_MISS]++;
-        // tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_MISS]++;
         tlb_profile.Increment(timestep, "MISS");
 
         paddr = walk_page_table(addr, type, timestep, level);
@@ -33,6 +30,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
         if (paddr == 0) {
             printf("BROKEN %lu %lu %d\n", addr, paddr, level);
         }
+        
         assert (paddr != 0);
         assert(level != -1);
         // Insert in TLB
@@ -53,7 +51,6 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     }
     else
     { 
-        // Everything below needs to go. Runtime should be decided by individual pieces and not memaccess. Perf counters are similarly useless here.
         // Pay the cost of accessing the memory (conditional on the type of memory)
         if (type == TYPE_READ)
         {
@@ -84,8 +81,6 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
             mmgr_profile.Increment(timestep, "PAGEFAULT");
-            // mmgr_agg_profile[COUNTER_PAGEFAULT]++;
-            // mmgr_profile[mmgr_profile.Map(timestep)][COUNTER_PAGEFAULT]++;
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
         }
@@ -114,9 +109,6 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
     }
 
     assert(pte != NULL);
-    // if (pte->addr + (addr & ((1 << (12 + (4 - level) * 9)) - 1)) == 0) {
-    //     printf("ADDR %lu, %lu %lu\n", pte->addr, addr, (addr & ((1 << (12 + (4 - level) * 9)) - 1)));
-    // }
     return pte->addr + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
 }
 
@@ -161,9 +153,7 @@ void MemorySimulator::memsim_nanosleep(size_t sleeptime)
     {
         assert(static_cast<bool>(OS_TlsGetValue(memsim_timebound_thread)) == true);
         memsim_timebound = 0;
-        // TODO validate sem_post is the same as SemaphoreSet
         PIN_SemaphoreSet(&timebound_sem);
-        // PIN_Yield();
     }
     
     PIN_SemaphoreWait(&wakeup_sem);
@@ -188,7 +178,6 @@ void MemorySimulator::PrintInstructionProfiles()
 
 void MemorySimulator::PrintAggregateProfiles()
 {
-    // TODO: Figure out how to do this...kinda sucks that we can't aggregate the values directly from the other ones
     std::cout << "TLB Profile: " << std::endl;
     std::cout << tlb_profile.AggregateString() << std::endl;
 
