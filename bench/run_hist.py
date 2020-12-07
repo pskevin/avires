@@ -27,34 +27,24 @@ def run_experiment(cmd_str, tries=math.inf):
             if success:
                 time_taken = end-start
                 print("Ran successfully in {}\n".format(time_taken))
-                # wtr.writerow([cmd_str, time_taken])
             break
 
 if __name__ == '__main__':
-    pin = 'pin -t ../sim/obj-intel64/mem_trace.so -w 0 --'
+    pin = 'pin -t ../sim/obj-intel64/mem_trace.so -o ./results/hist/rndm_write/gups_rndm_write_ --'
 
     gups_bin = '../apps/gups/obj/gups_rndm_write.o'
     gups_configs =[
         # '1 1000 15 8 0 0',
-        '1 10000 15 8 0 0',
-        # '1 100000 15 8 0 0',
+        # '1 10000 15 8 0 0',
+        '1 100000 15 8 0 0',
         # '1 1000000 15 8 0 0',
         # '1 10000000 15 8 0 0',
         # '1 100000000 15 8 0 0',
     ]
 
+    # Memory Access of GUPS + Pin
 
-    # Time GUPS solo
-    # wtr = csv.writer(open ('./results/gups_timings.csv', 'w'), delimiter=',', lineterminator='\n')
-
-    # for config in gups_configs:
-    #     gups_cmd = gups_bin + ' ' + config
-    #     run_experiment(gups_cmd)
-
-    # Time GUPS + Pin
-    # wtr = csv.writer(open ('./results/pin_timings.csv', 'w'), delimiter=',', lineterminator='\n')
-
-    for config in gups_configs[:4]:
+    for config in gups_configs:
         gups_cmd = gups_bin + ' ' + config
         pin_cmd = pin + ' ' + gups_cmd 
         run_experiment(pin_cmd)
