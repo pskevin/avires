@@ -74,6 +74,13 @@ struct ProfileCounter {
     PIN_MutexUnlock(&counter_mutex);
   }
 
+  void Set(uint64_t t, std::string label, uint64_t val) {
+    PIN_MutexLock(&counter_mutex);
+    Grow(t);
+    counts[t][label_map[label]] = val;
+    PIN_MutexUnlock(&counter_mutex);
+  }
+
   std::string String() {
     std::stringstream ss;
     for(const auto& l : labels) {
@@ -116,6 +123,7 @@ struct ProfileCounter {
 const std::string cache_profile_options[] = { "MISS", "HIT" };
 const std::string tlb_profile_options[] = { "MISS", "HIT" };
 const std::string mmgr_profile_options[] = { "FASTMEM", "SLOWMEM", "PAGEFAULT" };
+const std::string runtime_profile_options[] = { "RUNTIME" };
 
 class MemorySimulator {
   public:
@@ -135,7 +143,8 @@ class MemorySimulator {
     mmgr_(mgr), tlb_(tlb), cache_(cache),
     cache_profile(std::vector<std::string>(cache_profile_options, cache_profile_options + sizeof(cache_profile_options) / sizeof(std::string) )),
     tlb_profile(std::vector<std::string>(tlb_profile_options, tlb_profile_options + sizeof(tlb_profile_options) / sizeof(std::string) )),
-    mmgr_profile(std::vector<std::string>(mmgr_profile_options, mmgr_profile_options + sizeof(mmgr_profile_options) / sizeof(std::string) )) {
+    mmgr_profile(std::vector<std::string>(mmgr_profile_options, mmgr_profile_options + sizeof(mmgr_profile_options) / sizeof(std::string) )),
+    runtime_profile(std::vector<std::string>(runtime_profile_options, runtime_profile_options + sizeof(runtime_profile_options) / sizeof(std::string) )) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
 
@@ -161,6 +170,7 @@ class MemorySimulator {
     ProfileCounter cache_profile;
     ProfileCounter tlb_profile;
     ProfileCounter mmgr_profile;
+    ProfileCounter runtime_profile;
 
     PIN_TLS_INDEX memsim_timebound_thread;
 };

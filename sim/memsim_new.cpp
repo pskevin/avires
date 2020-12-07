@@ -9,6 +9,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     int level = -1;
     // assert(timestep == v_addrs.size());
     v_addrs.push_back(addr);
+    uint64_t initial_runtime = runtime;
 
     // Must be canonical addr
     assert((addr >> 48) == 0);
@@ -63,6 +64,9 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
         const std::string counter = (paddr & SLOWMEM_BIT) ? "SLOWMEM" : "FASTMEM";
         mmgr_profile.Increment(timestep, counter);
     }
+
+    assert(runtime - initial_runtime >= 0);
+    runtime_profile.Set(timestep, "RUNTIME", runtime - initial_runtime);
 }
 
 // 4-level page walk
@@ -174,6 +178,8 @@ void MemorySimulator::PrintInstructionProfiles()
     std::cout << cache_profile.String() << std::endl;
     std::cout << "MMGR Profile: " << std::endl;
     std::cout << mmgr_profile.String() << std::endl;
+    std::cout << "Runtime Profile: " << std::endl;
+    std::cout << runtime_profile.String() << std::endl;
 }
 
 void MemorySimulator::PrintAggregateProfiles()
@@ -188,6 +194,10 @@ void MemorySimulator::PrintAggregateProfiles()
     std::cout << std::endl;
     std::cout << "MMGR Profile: " << std::endl;
     std::cout << mmgr_profile.AggregateString() << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Runtime Profile: " << std::endl;
+    std::cout << runtime_profile.AggregateString() << std::endl;
 }
 
 void MemorySimulator::WriteStatsFiles(std::string out_prefix)
@@ -204,12 +214,17 @@ void MemorySimulator::WriteStatsFiles(std::string out_prefix)
     }
     tlb_agg_file.close();
 
-
     std::ofstream mmgr_agg_file((out_prefix + "mmgr_agg.out").c_str(), ios::out | ios::app);
     if (mmgr_agg_file.is_open()) {
         mmgr_agg_file << mmgr_profile.AggregateString() << std::endl;
     }
     mmgr_agg_file.close();
+
+    std::ofstream runtime_agg_file((out_prefix + "runtime_agg.out").c_str(), ios::out | ios::app);
+    if (runtime_agg_file.is_open()) {
+        runtime_agg_file << runtime_profile.AggregateString() << std::endl;
+    }
+    runtime_agg_file.close();
 
 
     std::ofstream cache_file((out_prefix + "cache.out").c_str(), ios::out);
@@ -230,6 +245,11 @@ void MemorySimulator::WriteStatsFiles(std::string out_prefix)
     }
     mmgr_file.close();
 
+    std::ofstream runtime_file((out_prefix + "runtime.out").c_str(), ios::out);
+    if (runtime_file.is_open()) {
+        runtime_file << runtime_profile.String() << std::endl;
+    }
+    runtime_file.close();
 
     std::ofstream vaddr_file((out_prefix + "vaddrs.out").c_str(), ios::out);
     if (vaddr_file.is_open()) {
