@@ -157,7 +157,7 @@ int main(int argc, char * argv[])
     // printf("INITIALIZING CACHE\n");
     L1DataCache* l1d = new L1DataCache();
     // printf("INITIALIZING TLB\n");
-    FourLevelTLB* tlb = new FourLevelTLB();
+    TwoLevelTLB* tlb = new TwoLevelTLB();
     // printf("INITIALIZING MEMSIM\n");
 
     sim = new MemorySimulator(mgr, tlb, l1d);

@@ -1,6 +1,6 @@
 #include "two_level_tlb.h"
 
-tlbe* FourLevelTLB::alltlb_lookup(uint64_t vaddr, int* level) {
+tlbe* TwoLevelTLB::alltlb_lookup(uint64_t vaddr, int* level) {
   tlbe *ret = NULL;
 
   // 1G L1 TLB
@@ -47,7 +47,7 @@ tlbe* FourLevelTLB::alltlb_lookup(uint64_t vaddr, int* level) {
   return NULL;
 }
 
-tlbe* FourLevelTLB::tlb_lookup(struct tlbe *tlb, unsigned int size, uint64_t vpfn)
+tlbe* TwoLevelTLB::tlb_lookup(struct tlbe *tlb, unsigned int size, uint64_t vpfn)
 {
   tlbe *ret;
   
@@ -64,7 +64,7 @@ tlbe* FourLevelTLB::tlb_lookup(struct tlbe *tlb, unsigned int size, uint64_t vpf
 }
 
 
-void FourLevelTLB::tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level)
+void TwoLevelTLB::tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level)
 {
   struct tlbe *te;
   uint64_t vpfn = 0, ppfn = 0;
@@ -114,7 +114,7 @@ void FourLevelTLB::tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level
   PIN_MutexUnlock(&tlb_lock);
 }
 
-void FourLevelTLB::shootdown(uint64_t addr) {
+void TwoLevelTLB::shootdown(uint64_t addr) {
   PIN_MutexLock(&tlb_lock);
   memset(l1tlb_1g, 0, sizeof(l1tlb_1g));
   memset(l1tlb_2m, 0, sizeof(l1tlb_2m));

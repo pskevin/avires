@@ -133,7 +133,6 @@ class MemorySimulator {
 
   MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache) :
     mmgr_(mgr), tlb_(tlb), cache_(cache),
-    cache_agg_profile(2, 0), tlb_agg_profile(3, 0), mmgr_agg_profile(3, 0),
     cache_profile(std::vector<std::string>(cache_profile_options, cache_profile_options + sizeof(cache_profile_options) / sizeof(std::string) )),
     tlb_profile(std::vector<std::string>(tlb_profile_options, tlb_profile_options + sizeof(tlb_profile_options) / sizeof(std::string) )),
     mmgr_profile(std::vector<std::string>(mmgr_profile_options, mmgr_profile_options + sizeof(mmgr_profile_options) / sizeof(std::string) )) {
@@ -156,10 +155,7 @@ class MemorySimulator {
     MemoryManager* mmgr_;
     TLB* tlb_;
     CacheManager* cache_;
-
-    std::vector<uint64_t> cache_agg_profile;
-    std::vector<uint64_t> tlb_agg_profile;
-    std::vector<uint64_t> mmgr_agg_profile;
+    
     std::vector<uint64_t> v_addrs;
 
     ProfileCounter cache_profile;
