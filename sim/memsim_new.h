@@ -51,12 +51,14 @@ struct ProfileCounter {
   std::vector<std::vector<uint64_t>> counts;
   std::vector<std::string> labels;
   std::map<std::string, size_t> label_map;
+  PIN_MUTEX counter_mutex;
 
   ProfileCounter(std::vector<std::string> l) {
     for(size_t i = 0; i < l.size(); i++) {
       label_map[l[i]] = i;
     }
     labels = l;
+    PIN_MutexInit(&counter_mutex);
   }
   
   void Grow(uint64_t t) {
@@ -66,8 +68,10 @@ struct ProfileCounter {
   }
 
   void Increment(uint64_t t, std::string label) {
+    PIN_MutexLock(&counter_mutex);
     Grow(t);
     counts[t][label_map[label]] += 1;
+    PIN_MutexUnlock(&counter_mutex);
   }
 
   std::string String() {
