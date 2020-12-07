@@ -16,7 +16,7 @@
 #include <unordered_map>
 
 #include "memsim_new.h"
-#include "four_level_tlb.h"
+#include "two_level_tlb.h"
 #include "l1_data_cache.h"
 
 #include "mmgr_simple.h"

@@ -1,4 +1,4 @@
-#include "four_level_tlb.h"
+#include "two_level_tlb.h"
 
 tlbe* FourLevelTLB::alltlb_lookup(uint64_t vaddr, int* level) {
   tlbe *ret = NULL;
