@@ -8,7 +8,9 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
 {
     int level = -1;
     // assert(timestep == v_addrs.size());
-    v_addrs.push_back(addr);
+    if (profiling_) {
+        v_addrs.push_back(addr);
+    }
     uint64_t initial_runtime = runtime;
 
     // Must be canonical addr
@@ -18,12 +20,16 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     uint64_t paddr = 0;
     if ((te = tlb_->alltlb_lookup(addr, &level)) != NULL)
     {
-        tlb_profile.Increment(timestep, "HIT");
+        if (profiling_) {
+            tlb_profile.Increment(timestep, "HIT");
+        }
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
     else
     {
-        tlb_profile.Increment(timestep, "MISS");
+        if (profiling_) {
+            tlb_profile.Increment(timestep, "MISS");
+        }
 
         paddr = walk_page_table(addr, type, timestep, level);
         assert(level >= 2 && level <= 4);
@@ -39,8 +45,10 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     }
 
     bool cachehit = cache_->cache_access(paddr, type, size);
-    const std::string counter = cachehit ? "HIT" : "MISS";
-    cache_profile.Increment(timestep, counter);
+    if (profiling_) {
+        const std::string counter = cachehit ? "HIT" : "MISS";
+        cache_profile.Increment(timestep, counter);
+    }
 
     if(cachehit) 
     {
@@ -61,12 +69,16 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
         {
             add_runtime((paddr & SLOWMEM_BIT) ? TIME_SLOWMEM_WRITE : TIME_FASTMEM_WRITE);
         }
-        const std::string counter = (paddr & SLOWMEM_BIT) ? "SLOWMEM" : "FASTMEM";
-        mmgr_profile.Increment(timestep, counter);
+        if (profiling_) {
+            const std::string counter = (paddr & SLOWMEM_BIT) ? "SLOWMEM" : "FASTMEM";
+            mmgr_profile.Increment(timestep, counter);
+        }
     }
 
-    assert(runtime - initial_runtime >= 0);
-    runtime_profile.Set(timestep, "RUNTIME", runtime - initial_runtime);
+    if (profiling_) {
+        assert(runtime - initial_runtime >= 0);
+        runtime_profile.Set(timestep, "RUNTIME", runtime - initial_runtime);
+    }
 }
 
 // 4-level page walk
@@ -84,7 +96,9 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
         {
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
-            mmgr_profile.Increment(timestep, "PAGEFAULT");
+            if (profiling_) {
+                mmgr_profile.Increment(timestep, "PAGEFAULT");
+            }
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
         }
@@ -128,7 +142,6 @@ void MemorySimulator::add_runtime(size_t delta)
     {
         wakeup_time = 0;
         PIN_SemaphoreSet(&wakeup_sem);
-        // PIN_Yield();
     }
 
     if (memsim_timebound != 0 && runtime >= memsim_timebound && !static_cast<bool>(OS_TlsGetValue(memsim_timebound_thread)))
@@ -137,7 +150,7 @@ void MemorySimulator::add_runtime(size_t delta)
     }
 
 #ifndef LOG_DEBUG
-    if (runtime - oldruntime > 1000000)
+    if (profiling_ && runtime - oldruntime > 1000000)
     { // Every millisecond
         fprintf(stderr, "Runtime: %.3f       \r", (double)runtime / 1000000000.0);
         oldruntime = runtime;

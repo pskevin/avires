@@ -161,7 +161,7 @@ int main(int argc, char * argv[])
     L1DataCache* l1d = new L1DataCache();
     TwoLevelTLB* tlb = new TwoLevelTLB();
 
-    sim = new MemorySimulator(mgr, tlb, l1d);
+    sim = new MemorySimulator(mgr, tlb, l1d, KnobWrite);
     
     mgr->init(sim);
 

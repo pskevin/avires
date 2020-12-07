@@ -139,12 +139,13 @@ class MemorySimulator {
     MemoryManager* GetMemoryManager();
     volatile size_t runtime = 0;
 
-  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache) :
+  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, bool profiling) :
     mmgr_(mgr), tlb_(tlb), cache_(cache),
     cache_profile(std::vector<std::string>(cache_profile_options, cache_profile_options + sizeof(cache_profile_options) / sizeof(std::string) )),
     tlb_profile(std::vector<std::string>(tlb_profile_options, tlb_profile_options + sizeof(tlb_profile_options) / sizeof(std::string) )),
     mmgr_profile(std::vector<std::string>(mmgr_profile_options, mmgr_profile_options + sizeof(mmgr_profile_options) / sizeof(std::string) )),
-    runtime_profile(std::vector<std::string>(runtime_profile_options, runtime_profile_options + sizeof(runtime_profile_options) / sizeof(std::string) )) {
+    runtime_profile(std::vector<std::string>(runtime_profile_options, runtime_profile_options + sizeof(runtime_profile_options) / sizeof(std::string) )),
+    profiling_(profiling) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
 
@@ -173,6 +174,7 @@ class MemorySimulator {
     ProfileCounter runtime_profile;
 
     PIN_TLS_INDEX memsim_timebound_thread;
+    bool profiling_;
 };
 
 // From Wikipedia
