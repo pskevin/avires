@@ -37,7 +37,7 @@ KNOB<uint32_t> KnobMemoryManager(KNOB_MODE_WRITEONCE, "pintool",
 
 MemorySimulator* sim;
 
-uint64_t timestep = 0;
+volatile uint64_t timestep = 0;
 
 // Print a memory read record
 VOID RecordMemRead(uint64_t addr, uint32_t size)
@@ -141,9 +141,11 @@ int main(int argc, char * argv[])
     switch (KnobMemoryManager)
     {
         case 0:
+            std::cout << "Running with Simple Memory Manager" << std::endl;
             mgr = new SimpleMemoryManager();
             break;
         case 1:
+            std::cout << "Running with Linux Memory Manager" << std::endl;
             mgr = new LinuxMemoryManager();
             break;
 
