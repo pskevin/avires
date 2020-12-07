@@ -8,7 +8,7 @@
 #include "memsim_new.h"
 #include <stdlib.h>
 
-#define PAGE_TYPE	HUGE_PAGE
+#define PAGE_TYPE	BASE_PAGE
 
 uint64_t SimpleMemoryManager::getmem(uint64_t addr, struct pte *pte)
 {
