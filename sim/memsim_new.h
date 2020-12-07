@@ -4,6 +4,7 @@
 // typedef uint64_t CACHE_STATS; // type of cache hit/miss counters
 #include <stddef.h>
 #include <semaphore.h>
+#include <sstream>      // std::stringstream
 #include "shared_new.h"
 #include "pin.H"
 #include "pin_profile.H"
@@ -45,33 +46,72 @@ class CacheManager {
     virtual bool cache_access(uint64_t vaddr, memory_access_type type, uint32_t size);
 };
 
-typedef enum
-{
-  COUNTER_CACHE_MISS = 0,
-  COUNTER_CACHE_HIT = 1,
-  COUNTER_CACHE_NUM
-} CACHE_COUNTER;
+struct ProfileCounter {
+  // indexed first by timestep, then by label
+  std::vector<std::vector<uint64_t>> counts;
+  std::vector<std::string> labels;
+  std::map<std::string, size_t> label_map;
 
-typedef enum
-{
-  COUNTER_TLB_MISS = 0,
-  COUNTER_TLB_HIT = 1,
-  COUNTER_TLB_SHOOTDOWN = 2,
-  COUNTER_TLB_NUM
-} TLB_COUNTER;
+  ProfileCounter(std::vector<std::string> l) {
+    for(size_t i = 0; i < l.size(); i++) {
+      label_map[l[i]] = i;
+    }
+    labels = l;
+  }
+  
+  void Grow(uint64_t t) {
+    while(counts.size() <= t) {
+      counts.push_back(std::vector<uint64_t>(labels.size(), 0));
+    }
+  }
 
-typedef enum {
-  COUNTER_PAGEFAULT = 0,
-  COUNTER_SLOWMEM = 1,
-  COUNTER_FASTMEM = 2,
-  COUNTER_MEM_NUM
-} MEM_COUNTER;
+  void Increment(uint64_t t, std::string label) {
+    Grow(t);
+    counts[t][label_map[label]] += 1;
+  }
 
-typedef COUNTER_ARRAY<uint64_t, COUNTER_CACHE_NUM> COUNTER_CACHE;
-typedef COUNTER_ARRAY<uint64_t, COUNTER_TLB_NUM> COUNTER_TLB;
+  std::string String() {
+    std::stringstream ss;
+    for(const auto& l : labels) {
+      ss << l << ", ";
+    }
+    ss << std::endl;
+    for(const auto& c : counts) {
+      for(const auto& l : labels) {
+        ss << c[label_map[l]] << ", ";
+      }
+      ss << std::endl;
+    }
 
-// Pagefault counters only have one number to track
-typedef COUNTER_ARRAY<uint64_t, COUNTER_MEM_NUM> COUNTER_PAGEFAULTS;
+    return ss.str();
+  }
+
+  std::string AggregateString() {
+    std::vector<uint64_t> aggregate_counts(labels.size(), 0);
+    std::stringstream ss;
+
+    for(const auto& c : counts) {
+      for(const auto& l : labels) {
+        aggregate_counts[label_map[l]] += c[label_map[l]];
+      }
+    }
+
+    for(const auto& l : labels) {
+      ss << l << ", ";
+    }
+    ss << std::endl;
+
+    for(const auto& l : labels) {
+      ss << aggregate_counts[label_map[l]] << ", ";
+    }
+
+    return ss.str();
+  }
+};
+
+const std::string cache_profile_options[] = { "MISS", "HIT" };
+const std::string tlb_profile_options[] = { "MISS", "HIT", "SHOOTDOWN" };
+const std::string mmgr_profile_options[] = { "FASTMEM", "SLOWMEM", "PAGEFAULT" };
 
 class MemorySimulator {
   public:
@@ -87,27 +127,17 @@ class MemorySimulator {
     MemoryManager* GetMemoryManager();
     volatile size_t runtime = 0;
 
-  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_CACHE cache_threshold, COUNTER_TLB tlb_threshold, COUNTER_PAGEFAULTS pf_threshold) :
+  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache) :
     mmgr_(mgr), tlb_(tlb), cache_(cache),
-    cache_agg_profile(COUNTER_CACHE_NUM, 0), tlb_agg_profile(COUNTER_TLB_NUM, 0), mmgr_agg_profile(COUNTER_MEM_NUM, 0) {
+    cache_agg_profile(2, 0), tlb_agg_profile(3, 0), mmgr_agg_profile(3, 0),
+    cache_profile(std::vector<std::string>(cache_profile_options, cache_profile_options + sizeof(cache_profile_options) / sizeof(std::string) )),
+    tlb_profile(std::vector<std::string>(tlb_profile_options, tlb_profile_options + sizeof(tlb_profile_options) / sizeof(std::string) )),
+    mmgr_profile(std::vector<std::string>(mmgr_profile_options, mmgr_profile_options + sizeof(mmgr_profile_options) / sizeof(std::string) )) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
 
     memsim_timebound_thread = OS_TlsAlloc(NULL);
     OS_TlsSetValue(memsim_timebound_thread, reinterpret_cast<void *> (static_cast<int> (false)));
-
-    tlb_profile.SetKeyName("timestep          ");
-    tlb_profile.SetCounterName("tlb:miss        tlb:hit");
-
-    cache_profile.SetKeyName("timestep          ");
-    cache_profile.SetCounterName("dcache:miss        dcache:hit");
-
-    mmgr_profile.SetKeyName("timestep          ");
-    mmgr_profile.SetCounterName("mmgr:pagefault        mmgr:slowmem        mmgr:fastmem");
-
-    cache_profile.SetThreshold(cache_threshold);
-    tlb_profile.SetThreshold(tlb_threshold);
-    mmgr_profile.SetThreshold(pf_threshold);
   }
   
   private:
@@ -128,12 +158,9 @@ class MemorySimulator {
     std::vector<uint64_t> mmgr_agg_profile;
     std::vector<uint64_t> v_addrs;
 
-    // holds the counters with misses and hits
-    // conceptually this is an array indexed by instruction address
-    COMPRESSOR_COUNTER<uint64_t, uint64_t, COUNTER_CACHE> cache_profile;
-    COMPRESSOR_COUNTER<uint64_t, uint64_t, COUNTER_TLB> tlb_profile;
-    // holds the counter for pagefaults
-    COMPRESSOR_COUNTER<uint64_t, uint64_t, COUNTER_PAGEFAULTS> mmgr_profile;
+    ProfileCounter cache_profile;
+    ProfileCounter tlb_profile;
+    ProfileCounter mmgr_profile;
 
     PIN_TLS_INDEX memsim_timebound_thread;
 };

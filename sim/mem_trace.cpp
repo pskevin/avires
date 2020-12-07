@@ -32,16 +32,8 @@ using std::endl;
 
 KNOB<string> KnobOutputPrefix(KNOB_MODE_WRITEONCE, "pintool",
     "o", "experiments/sim_", "specify stats output directory");
-KNOB<uint64_t> KnobThresholdHit(KNOB_MODE_WRITEONCE , "pintool",
-   "rh", "0", "only report memops with hit count above threshold");
-KNOB<uint64_t> KnobThresholdMiss(KNOB_MODE_WRITEONCE, "pintool",
-   "rm","0", "only report memops with miss count above threshold");
-KNOB<uint64_t> KnobThresholdPagefault(KNOB_MODE_WRITEONCE, "pintool",
-   "rf","0", "only report memops with pagefault count above threshold");
-
 KNOB<uint32_t> KnobMemoryManager(KNOB_MODE_WRITEONCE, "pintool",
    "mm","0", "Defines which memory manager to use. 0=simple, 1=linux");
-// TODO more knobs
 
 MemorySimulator* sim;
 
@@ -60,13 +52,6 @@ VOID RecordMemWrite(uint64_t addr, uint32_t size)
     sim->memaccess(addr, TYPE_WRITE, size, timestep);
     timestep++;
 }
-
-// std::string ToString(uint64_t val)
-// {
-//     std::stringstream stream;
-//     stream << val;
-//     return stream.str();
-// }
 
 // Pin calls this function every time a new instruction is encountered
 VOID Instruction(INS ins, VOID *v)
@@ -121,24 +106,9 @@ VOID PrepareForFini(VOID *v) {
 
 VOID Fini(INT32 code, VOID *v)
 {
-    // fprintf(0, "#eof\n");
-    // string output;
-    // std::tr1::unordered_map<uint64_t, int>::iterator kv;
-    // for ( kv = hashmap.begin(); kv != hashmap.end(); kv++ )
-    // {
-    //     output.append(ToString(kv->first) + ":" + ToString(kv->second) + "\n");
-    // }
-    // FILE* file = fopen("addr.hist", "w");
-    // fprintf(file, "%s", output.c_str());
-    // fclose(file);
-    // std::cout << "\n\nhashmap.size() is " << hashmap.size() << std::endl;
-    printf("Fini\n");
     std::cout << "Total runtime: " << (double)sim->runtime / 1e9 << std::endl;
     sim->PrintAggregateProfiles();
     sim->WriteStatsFiles(KnobOutputPrefix);
-
-    // std::cout << ((L1DataCache*) sim->getCacheManager())->getCache()->StatsLong();
-
 }
 
 /* ===================================================================== */
@@ -188,19 +158,7 @@ int main(int argc, char * argv[])
     FourLevelTLB* tlb = new FourLevelTLB();
     // printf("INITIALIZING MEMSIM\n");
 
-    COUNTER_CACHE cache_threshold;
-    cache_threshold[COUNTER_CACHE_HIT] = KnobThresholdHit.Value();
-    cache_threshold[COUNTER_CACHE_MISS] = KnobThresholdMiss.Value();
-
-    COUNTER_TLB tlb_threshold;
-    tlb_threshold[COUNTER_TLB_HIT] = KnobThresholdHit.Value();
-    tlb_threshold[COUNTER_TLB_MISS] = KnobThresholdMiss.Value();
-    tlb_threshold[COUNTER_TLB_SHOOTDOWN] = KnobThresholdMiss.Value();
-
-    COUNTER_PAGEFAULTS pf_threshold;
-    pf_threshold[COUNTER_PAGEFAULT] = KnobThresholdHit.Value();
-
-    sim = new MemorySimulator(mgr, tlb, l1d, cache_threshold, tlb_threshold, pf_threshold);
+    sim = new MemorySimulator(mgr, tlb, l1d);
     
     mgr->init(sim);
 
