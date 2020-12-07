@@ -122,8 +122,8 @@ int main(int argc, char **argv)
   struct gups_args **ga;
   pthread_t t[MAX_THREADS];
 
-  pid_t pid = getpid();
-  printf("\npid: %d\n", pid);
+  // pid_t pid = getpid();
+  // printf("\npid: %d\n", pid);
 
   if (argc != 7)
   {
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
   printf("Region address: %p\t size: %ld\n", p, size);
   printf("Field addr: 0x%x\n", p);
 
-  printf("Initializing thread data\n");
+  // printf("Initializing thread data\n");
   for (i = 0; i < threads; ++i)
   {
     ga[i] = (struct gups_args *)malloc(sizeof(struct gups_args));

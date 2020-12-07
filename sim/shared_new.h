@@ -34,7 +34,7 @@
 #define GIGA_PFN_MASK	(GIGA_PAGE_MASK ^ UINT64_MAX)
 
 // Physical memory sizes in bytes
-#define FASTMEM_SIZE	KB(32)
+#define FASTMEM_SIZE	KB(8)
 #define SLOWMEM_SIZE	MB(512)
 #define CACHELINE_SIZE	64
 #define MMM_LINE_SIZE	256

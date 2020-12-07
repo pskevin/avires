@@ -393,7 +393,7 @@ class L1DataCache : public CacheManager
 public:
   L1DataCache()
   {
-    dl1 = new DL1::CACHE("L1 Data Cache", 4 * KILO, 16, 8);
+    dl1 = new DL1::CACHE("L1 Data Cache", 512, 16, 4);
   }
   bool cache_access(uint64_t vaddr, memory_access_type type, uint32_t size);
   DL1::CACHE* getCache();
