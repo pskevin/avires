@@ -114,7 +114,7 @@ struct ProfileCounter {
 };
 
 const std::string cache_profile_options[] = { "MISS", "HIT" };
-const std::string tlb_profile_options[] = { "MISS", "HIT", "SHOOTDOWN" };
+const std::string tlb_profile_options[] = { "MISS", "HIT" };
 const std::string mmgr_profile_options[] = { "FASTMEM", "SLOWMEM", "PAGEFAULT" };
 
 class MemorySimulator {
