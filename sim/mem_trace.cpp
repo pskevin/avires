@@ -34,6 +34,8 @@ KNOB<string> KnobOutputPrefix(KNOB_MODE_WRITEONCE, "pintool",
     "o", "experiments/sim_", "specify stats output directory");
 KNOB<uint32_t> KnobMemoryManager(KNOB_MODE_WRITEONCE, "pintool",
    "mm","0", "Defines which memory manager to use. 0=simple, 1=linux");
+KNOB<bool> KnobWrite(KNOB_MODE_WRITEONCE, "pintool",
+    "w", "true", "if false, we dont write any output");
 
 MemorySimulator* sim;
 
@@ -106,9 +108,11 @@ VOID PrepareForFini(VOID *v) {
 
 VOID Fini(INT32 code, VOID *v)
 {
-    std::cout << "Total runtime: " << (double)sim->runtime / 1e9 << std::endl;
-    sim->PrintAggregateProfiles();
-    sim->WriteStatsFiles(KnobOutputPrefix);
+    if (KnobWrite) {
+        std::cout << "Total runtime: " << (double)sim->runtime / 1e9 << std::endl;
+        sim->PrintAggregateProfiles();
+        sim->WriteStatsFiles(KnobOutputPrefix);
+    }
 }
 
 /* ===================================================================== */
@@ -141,11 +145,11 @@ int main(int argc, char * argv[])
     switch (KnobMemoryManager)
     {
         case 0:
-            std::cout << "Running with Simple Memory Manager" << std::endl;
+            if (KnobWrite) std::cout << "Running with Simple Memory Manager" << std::endl;
             mgr = new SimpleMemoryManager();
             break;
         case 1:
-            std::cout << "Running with Linux Memory Manager" << std::endl;
+            if (KnobWrite) std::cout << "Running with Linux Memory Manager" << std::endl;
             mgr = new LinuxMemoryManager();
             break;
 
@@ -154,11 +158,8 @@ int main(int argc, char * argv[])
         break;
     }
 
-    // printf("INITIALIZING CACHE\n");
     L1DataCache* l1d = new L1DataCache();
-    // printf("INITIALIZING TLB\n");
     TwoLevelTLB* tlb = new TwoLevelTLB();
-    // printf("INITIALIZING MEMSIM\n");
 
     sim = new MemorySimulator(mgr, tlb, l1d);
     
