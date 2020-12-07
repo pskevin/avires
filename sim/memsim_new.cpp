@@ -7,6 +7,8 @@
 void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t timestep)
 {
     int level = -1;
+    assert(timestep == v_addrs.size());
+    v_addrs.push_back(addr);
 
     // Must be canonical addr
     assert((addr >> 48) == 0);
@@ -40,7 +42,6 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     const CACHE_COUNTER counter = cachehit ? COUNTER_CACHE_HIT : COUNTER_CACHE_MISS;
     cache_agg_profile[counter]++;
     cache_profile[cache_profile.Map(timestep)][counter]++;
-
 
     if(cachehit) 
     {
@@ -239,24 +240,32 @@ void MemorySimulator::WriteStatsFiles(std::string out_prefix)
     mmgr_agg_file.close();
 
 
-    std::ofstream cache_file((out_prefix + "cache.out").c_str(), ios::out | ios::app);
+    std::ofstream cache_file((out_prefix + "cache.out").c_str(), ios::out);
     if (cache_file.is_open()) {
         cache_file << cache_profile.StringLong() << std::endl;
     }
     cache_file.close();
 
-    std::ofstream tlb_file((out_prefix + "tlb.out").c_str(), ios::out | ios::app);
+    std::ofstream tlb_file((out_prefix + "tlb.out").c_str(), ios::out);
     if (tlb_file.is_open()) {
         tlb_file << tlb_profile.StringLong() << std::endl;
     }
     tlb_file.close();
 
-
-    std::ofstream mmgr_file((out_prefix + "mmgr.out").c_str(), ios::out | ios::app);
+    std::ofstream mmgr_file((out_prefix + "mmgr.out").c_str(), ios::out);
     if (mmgr_file.is_open()) {
         mmgr_file << mmgr_profile.StringLong() << std::endl;
     }
     mmgr_file.close();
+
+
+    std::ofstream vaddr_file((out_prefix + "vaddrs.out").c_str(), ios::out);
+    if (vaddr_file.is_open()) {
+        for(const auto v_addr : v_addrs) {
+            vaddr_file << v_addr << std::endl;
+        }
+    }
+    vaddr_file.close();
 }
 
 CacheManager* MemorySimulator::GetCacheManager() 

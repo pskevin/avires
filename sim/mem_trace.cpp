@@ -50,13 +50,15 @@ uint64_t timestep = 0;
 // Print a memory read record
 VOID RecordMemRead(uint64_t addr, uint32_t size)
 {   
-    sim->memaccess(addr, TYPE_READ, size, timestep++);
+    sim->memaccess(addr, TYPE_READ, size, timestep);
+    timestep++;
 }
 
 // Print a memory write record
 VOID RecordMemWrite(uint64_t addr, uint32_t size)
 {
-    sim->memaccess(addr, TYPE_WRITE, size, timestep++);
+    sim->memaccess(addr, TYPE_WRITE, size, timestep);
+    timestep++;
 }
 
 // std::string ToString(uint64_t val)
