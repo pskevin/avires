@@ -30,7 +30,7 @@ using std::ios;
 using std::string;
 using std::endl;
 
-KNOB<string> KnobOutputPrefix(KNOB_MODE_WRITEONCE,    "pintool",
+KNOB<string> KnobOutputPrefix(KNOB_MODE_WRITEONCE, "pintool",
     "o", "experiments/sim_", "specify stats output directory");
 KNOB<uint64_t> KnobThresholdHit(KNOB_MODE_WRITEONCE , "pintool",
    "rh", "0", "only report memops with hit count above threshold");
@@ -45,16 +45,18 @@ KNOB<uint32_t> KnobMemoryManager(KNOB_MODE_WRITEONCE, "pintool",
 
 MemorySimulator* sim;
 
+uint64_t timestep = 0;
+
 // Print a memory read record
-VOID RecordMemRead(uint64_t addr, uint32_t size, ADDRINT insaddr)
+VOID RecordMemRead(uint64_t addr, uint32_t size)
 {   
-    sim->memaccess(addr, TYPE_READ, size, insaddr);
+    sim->memaccess(addr, TYPE_READ, size, timestep++);
 }
 
 // Print a memory write record
-VOID RecordMemWrite(uint64_t addr, uint32_t size, ADDRINT insaddr)
+VOID RecordMemWrite(uint64_t addr, uint32_t size)
 {
-    sim->memaccess(addr, TYPE_WRITE, size, insaddr);
+    sim->memaccess(addr, TYPE_WRITE, size, timestep++);
 }
 
 // std::string ToString(uint64_t val)
@@ -89,7 +91,6 @@ VOID Instruction(INS ins, VOID *v)
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
-                IARG_ADDRINT, INS_Address(ins),
                 IARG_END);
         }
         // Note that in some architectures a single memory operand can be 
@@ -104,7 +105,6 @@ VOID Instruction(INS ins, VOID *v)
                 // IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_UINT32, size,
-                IARG_ADDRINT, INS_Address(ins),
                 IARG_END);
         }
     }
@@ -186,16 +186,19 @@ int main(int argc, char * argv[])
     FourLevelTLB* tlb = new FourLevelTLB();
     // printf("INITIALIZING MEMSIM\n");
 
-    COUNTER_HIT_MISS hm_threshold;
+    COUNTER_CACHE cache_threshold;
+    cache_threshold[COUNTER_CACHE_HIT] = KnobThresholdHit.Value();
+    cache_threshold[COUNTER_CACHE_MISS] = KnobThresholdMiss.Value();
 
-    hm_threshold[COUNTER_HIT] = KnobThresholdHit.Value();
-    hm_threshold[COUNTER_MISS] = KnobThresholdMiss.Value();
+    COUNTER_TLB tlb_threshold;
+    tlb_threshold[COUNTER_TLB_HIT] = KnobThresholdHit.Value();
+    tlb_threshold[COUNTER_TLB_MISS] = KnobThresholdMiss.Value();
+    tlb_threshold[COUNTER_TLB_SHOOTDOWN] = KnobThresholdMiss.Value();
 
     COUNTER_PAGEFAULTS pf_threshold;
-
     pf_threshold[COUNTER_PAGEFAULT] = KnobThresholdHit.Value();
 
-    sim = new MemorySimulator(mgr, tlb, l1d, hm_threshold, pf_threshold);
+    sim = new MemorySimulator(mgr, tlb, l1d, cache_threshold, tlb_threshold, pf_threshold);
     
     mgr->init(sim);
 

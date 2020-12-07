@@ -47,26 +47,35 @@ class CacheManager {
 
 typedef enum
 {
-  COUNTER_MISS = 0,
-  COUNTER_HIT = 1,
-  COUNTER_HM_NUM
-} COUNTER_HM;
+  COUNTER_CACHE_MISS = 0,
+  COUNTER_CACHE_HIT = 1,
+  COUNTER_CACHE_NUM
+} CACHE_COUNTER;
+
+typedef enum
+{
+  COUNTER_TLB_MISS = 0,
+  COUNTER_TLB_HIT = 1,
+  COUNTER_TLB_SHOOTDOWN = 2,
+  COUNTER_TLB_NUM
+} TLB_COUNTER;
 
 typedef enum {
   COUNTER_PAGEFAULT = 0,
   COUNTER_SLOWMEM = 1,
   COUNTER_FASTMEM = 2,
   COUNTER_MEM_NUM
-} COUNTER_MEM;
+} MEM_COUNTER;
 
-typedef COUNTER_ARRAY<uint64_t, COUNTER_HM_NUM> COUNTER_HIT_MISS;
+typedef COUNTER_ARRAY<uint64_t, COUNTER_CACHE_NUM> COUNTER_CACHE;
+typedef COUNTER_ARRAY<uint64_t, COUNTER_TLB_NUM> COUNTER_TLB;
 
 // Pagefault counters only have one number to track
 typedef COUNTER_ARRAY<uint64_t, COUNTER_MEM_NUM> COUNTER_PAGEFAULTS;
 
 class MemorySimulator {
   public:
-    void memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT insaddr);
+    void memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t timestep);
     void setCR3(pte* ptr);
     void tlb_shootdown(uint64_t addr);
     void add_runtime(size_t delta);
@@ -78,31 +87,31 @@ class MemorySimulator {
     MemoryManager* GetMemoryManager();
     volatile size_t runtime = 0;
 
-  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_HIT_MISS hm_threshold, COUNTER_PAGEFAULTS pf_threshold) :
+  MemorySimulator(MemoryManager* mgr, TLB* tlb, CacheManager* cache, COUNTER_CACHE cache_threshold, COUNTER_TLB tlb_threshold, COUNTER_PAGEFAULTS pf_threshold) :
     mmgr_(mgr), tlb_(tlb), cache_(cache),
-    cache_agg_profile(COUNTER_HM_NUM, 0), tlb_agg_profile(COUNTER_HM_NUM, 0), mmgr_agg_profile(COUNTER_MEM_NUM, 0) {
+    cache_agg_profile(COUNTER_CACHE_NUM, 0), tlb_agg_profile(COUNTER_TLB_NUM, 0), mmgr_agg_profile(COUNTER_MEM_NUM, 0) {
     PIN_SemaphoreInit(&wakeup_sem);
     PIN_SemaphoreInit(&timebound_sem);
 
     memsim_timebound_thread = OS_TlsAlloc(NULL);
     OS_TlsSetValue(memsim_timebound_thread, reinterpret_cast<void *> (static_cast<int> (false)));
 
-    tlb_profile.SetKeyName("iaddr          ");
+    tlb_profile.SetKeyName("vaddr          ");
     tlb_profile.SetCounterName("tlb:miss        tlb:hit");
 
-    cache_profile.SetKeyName("iaddr          ");
+    cache_profile.SetKeyName("vaddr          ");
     cache_profile.SetCounterName("dcache:miss        dcache:hit");
 
-    mmgr_profile.SetKeyName("iaddr          ");
+    mmgr_profile.SetKeyName("vaddr          ");
     mmgr_profile.SetCounterName("mmgr:pagefault        mmgr:slowmem        mmgr:fastmem");
 
-    cache_profile.SetThreshold(hm_threshold);
-    tlb_profile.SetThreshold(hm_threshold);
+    cache_profile.SetThreshold(cache_threshold);
+    tlb_profile.SetThreshold(tlb_threshold);
     mmgr_profile.SetThreshold(pf_threshold);
   }
   
   private:
-    uint64_t walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level);
+    uint64_t walk_page_table(uint64_t addr, memory_access_type type, uint64_t timestep, int &level);
     // these should be atomic (maybe need mutexes?)
     volatile size_t wakeup_time = 0;
     volatile size_t memsim_timebound = 0;
@@ -117,13 +126,14 @@ class MemorySimulator {
     std::vector<uint64_t> cache_agg_profile;
     std::vector<uint64_t> tlb_agg_profile;
     std::vector<uint64_t> mmgr_agg_profile;
+    std::vector<uint64_t> v_addrs;
 
     // holds the counters with misses and hits
     // conceptually this is an array indexed by instruction address
-    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> cache_profile;
-    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_HIT_MISS> tlb_profile;
+    COMPRESSOR_COUNTER<uint64_t, uint64_t, COUNTER_CACHE> cache_profile;
+    COMPRESSOR_COUNTER<uint64_t, uint64_t, COUNTER_TLB> tlb_profile;
     // holds the counter for pagefaults
-    COMPRESSOR_COUNTER<ADDRINT, uint64_t, COUNTER_PAGEFAULTS> mmgr_profile;
+    COMPRESSOR_COUNTER<uint64_t, uint64_t, COUNTER_PAGEFAULTS> mmgr_profile;
 
     PIN_TLS_INDEX memsim_timebound_thread;
 };

@@ -4,7 +4,7 @@
 #include <fstream>
 #include "pin.H"
 
-void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, ADDRINT insaddr)
+void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t timestep)
 {
     int level = -1;
 
@@ -15,16 +15,16 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     uint64_t paddr = 0;
     if ((te = tlb_->alltlb_lookup(addr, &level)) != NULL)
     {
-        tlb_agg_profile[COUNTER_HIT]++;
-        tlb_profile[tlb_profile.Map(insaddr)][COUNTER_HIT]++;
+        tlb_agg_profile[COUNTER_TLB_HIT]++;
+        tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_HIT]++;
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
     else
     {
-        tlb_agg_profile[COUNTER_MISS]++;
-        tlb_profile[tlb_profile.Map(insaddr)][COUNTER_MISS]++;
+        tlb_agg_profile[COUNTER_TLB_MISS]++;
+        tlb_profile[tlb_profile.Map(timestep)][COUNTER_TLB_MISS]++;
 
-        paddr = walk_page_table(addr, type, insaddr, level);
+        paddr = walk_page_table(addr, type, timestep, level);
         assert(level >= 2 && level <= 4);
         
         if (paddr == 0) {
@@ -37,9 +37,9 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     }
 
     bool cachehit = cache_->cache_access(paddr, type, size);
-    const COUNTER_HM counter = cachehit ? COUNTER_HIT : COUNTER_MISS;
+    const CACHE_COUNTER counter = cachehit ? COUNTER_CACHE_HIT : COUNTER_CACHE_MISS;
     cache_agg_profile[counter]++;
-    cache_profile[cache_profile.Map(insaddr)][counter]++;
+    cache_profile[cache_profile.Map(timestep)][counter]++;
 
 
     if(cachehit) 
@@ -62,14 +62,14 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
         {
             add_runtime((paddr & SLOWMEM_BIT) ? TIME_SLOWMEM_WRITE : TIME_FASTMEM_WRITE);
         }
-        const COUNTER_MEM counter = (paddr & SLOWMEM_BIT) ? COUNTER_SLOWMEM : COUNTER_FASTMEM;
+        const MEM_COUNTER counter = (paddr & SLOWMEM_BIT) ? COUNTER_SLOWMEM : COUNTER_FASTMEM;
         mmgr_agg_profile[counter]++;
-        mmgr_profile[mmgr_profile.Map(insaddr)][counter]++;
+        mmgr_profile[mmgr_profile.Map(timestep)][counter]++;
     }
 }
 
 // 4-level page walk
-uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type, ADDRINT insaddr, int &level)
+uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type, uint64_t timestep, int &level)
 {
     assert(cr3 != NULL);
     struct pte *ptable = cr3, *pte = NULL;
@@ -84,7 +84,7 @@ uint64_t MemorySimulator::walk_page_table(uint64_t addr, memory_access_type type
             mmgr_->pagefault(addr, pte->readonly && type == TYPE_WRITE);
             add_runtime(TIME_PAGEFAULT);
             mmgr_agg_profile[COUNTER_PAGEFAULT]++;
-            mmgr_profile[mmgr_profile.Map(insaddr)][COUNTER_PAGEFAULT]++;
+            mmgr_profile[mmgr_profile.Map(timestep)][COUNTER_PAGEFAULT]++;
             assert(pte->present);
             assert(!pte->readonly || type != TYPE_WRITE);
         }
@@ -210,31 +210,51 @@ void MemorySimulator::PrintAggregateProfiles()
 
 void MemorySimulator::WriteStatsFiles(std::string out_prefix)
 {
+    std::ofstream cache_agg_file((out_prefix + "cache_agg.out").c_str(), ios::out | ios::app);
+    if (cache_agg_file.is_open()) {
+        for(const auto& val : cache_agg_profile) {
+            cache_agg_file << val << " ";
+        }
+        cache_agg_file << endl;
+    }
+    cache_agg_file.close();
+
+    std::ofstream tlb_agg_file((out_prefix + "tlb_agg.out").c_str(), ios::out | ios::app);
+    if (tlb_agg_file.is_open()) {
+        for(const auto& val : tlb_agg_profile) {
+            tlb_agg_file << val << " ";
+        }
+        tlb_agg_file << endl;
+    }
+    tlb_agg_file.close();
+
+
+    std::ofstream mmgr_agg_file((out_prefix + "mmgr_agg.out").c_str(), ios::out | ios::app);
+    if (mmgr_agg_file.is_open()) {
+        for(const auto& val : mmgr_agg_profile) {
+            mmgr_agg_file << val << " ";
+        }
+        mmgr_agg_file << endl;
+    }
+    mmgr_agg_file.close();
+
+
     std::ofstream cache_file((out_prefix + "cache.out").c_str(), ios::out | ios::app);
     if (cache_file.is_open()) {
-        for(const auto& val : cache_agg_profile) {
-            cache_file << val << " ";
-        }
-        cache_file << endl;
+        cache_file << cache_profile.StringLong() << std::endl;
     }
     cache_file.close();
 
     std::ofstream tlb_file((out_prefix + "tlb.out").c_str(), ios::out | ios::app);
     if (tlb_file.is_open()) {
-        for(const auto& val : tlb_agg_profile) {
-            tlb_file << val << " ";
-        }
-        tlb_file << endl;
+        tlb_file << tlb_profile.StringLong() << std::endl;
     }
     tlb_file.close();
 
 
     std::ofstream mmgr_file((out_prefix + "mmgr.out").c_str(), ios::out | ios::app);
     if (mmgr_file.is_open()) {
-        for(const auto& val : mmgr_agg_profile) {
-            mmgr_file << val << " ";
-        }
-        mmgr_file << endl;
+        mmgr_file << mmgr_profile.StringLong() << std::endl;
     }
     mmgr_file.close();
 }
