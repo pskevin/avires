@@ -19,7 +19,7 @@
 #define S(x)		(MS(x) * 1000)
 
 // Page sizes
-#define BASE_PAGE_SIZE	KB(4)
+#define BASE_PAGE_SIZE	KB(1)
 #define HUGE_PAGE_SIZE	MB(2)
 #define GIGA_PAGE_SIZE	GB(1)
 
@@ -34,8 +34,8 @@
 #define GIGA_PFN_MASK	(GIGA_PAGE_MASK ^ UINT64_MAX)
 
 // Physical memory sizes in bytes
-#define FASTMEM_SIZE	MB(42)
-#define SLOWMEM_SIZE	GB(512)
+#define FASTMEM_SIZE	KB(32)
+#define SLOWMEM_SIZE	MB(512)
 #define CACHELINE_SIZE	64
 #define MMM_LINE_SIZE	256
 
