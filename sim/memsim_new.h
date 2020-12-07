@@ -96,13 +96,13 @@ class MemorySimulator {
     memsim_timebound_thread = OS_TlsAlloc(NULL);
     OS_TlsSetValue(memsim_timebound_thread, reinterpret_cast<void *> (static_cast<int> (false)));
 
-    tlb_profile.SetKeyName("vaddr          ");
+    tlb_profile.SetKeyName("timestep          ");
     tlb_profile.SetCounterName("tlb:miss        tlb:hit");
 
-    cache_profile.SetKeyName("vaddr          ");
+    cache_profile.SetKeyName("timestep          ");
     cache_profile.SetCounterName("dcache:miss        dcache:hit");
 
-    mmgr_profile.SetKeyName("vaddr          ");
+    mmgr_profile.SetKeyName("timestep          ");
     mmgr_profile.SetCounterName("mmgr:pagefault        mmgr:slowmem        mmgr:fastmem");
 
     cache_profile.SetThreshold(cache_threshold);
