@@ -4,41 +4,41 @@ tlbe* TwoLevelTLB::alltlb_lookup(uint64_t vaddr, int* level) {
   tlbe *ret = NULL;
 
   // 1G L1 TLB
-  ret = tlb_lookup(l1tlb_1g, 4, vaddr & GIGA_PFN_MASK);
+  ret = tlb_lookup(l1tlb_1g, TLB_L1_GIGA_ENTRIES, vaddr & GIGA_PFN_MASK);
   if(ret != NULL) {
     *level = 2;
     return ret;
   }
 
   // 2M L1 TLB
-  ret = tlb_lookup(l1tlb_2m, 32, vaddr & HUGE_PFN_MASK);
+  ret = tlb_lookup(l1tlb_2m, TLB_L1_HUGE_ENTRIES, vaddr & HUGE_PFN_MASK);
   if(ret != NULL) {
     *level = 3;
     return ret;
   }
 
   // 4K L1 TLB
-  ret = tlb_lookup(l1tlb_4k, 64, vaddr & BASE_PFN_MASK);
+  ret = tlb_lookup(l1tlb_4k, TLB_L1_BASE_ENTRIES, vaddr & BASE_PFN_MASK);
   if(ret != NULL) {
     *level = 4;
     return ret;
   }
 
   // 1G L2 TLB
-  ret = tlb_lookup(l2tlb_1g, 16, vaddr & GIGA_PFN_MASK);
+  ret = tlb_lookup(l2tlb_1g, TLB_L2_GIGA_ENTRIES, vaddr & GIGA_PFN_MASK);
   if(ret != NULL) {
     *level = 2;
     return ret;
   }
 
   // 2M L2 TLB
-  ret = tlb_lookup(l2tlb_2m4k, 1536, vaddr & HUGE_PFN_MASK);
+  ret = tlb_lookup(l2tlb_2m4k, TLB_L2_HUGE_BASE_ENTRIES, vaddr & HUGE_PFN_MASK);
   if(ret != NULL && ret->hugepage) {
     *level = 3;
     return ret;
   }
 
-  ret = tlb_lookup(l2tlb_2m4k, 1536, vaddr & BASE_PFN_MASK);
+  ret = tlb_lookup(l2tlb_2m4k, TLB_L2_HUGE_BASE_ENTRIES, vaddr & BASE_PFN_MASK);
   if(ret != NULL && !ret->hugepage) {
     *level = 4;
     return ret;
@@ -77,18 +77,18 @@ void TwoLevelTLB::tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level)
   case 2:	// 1GB page
     vpfn = vaddr & GIGA_PFN_MASK;
     ppfn = paddr & GIGA_PFN_MASK;
-    te = &l1tlb_1g[tlb_hash(vpfn) % 4];
+    te = &l1tlb_1g[tlb_hash(vpfn) % TLB_L1_GIGA_ENTRIES];
     if(te->present) {
       // Move previous entry down
       assert(te->vpfn != vpfn);
-      memcpy(&l2tlb_1g[tlb_hash(vpfn) % 16], te, sizeof(struct tlbe));
+      memcpy(&l2tlb_1g[tlb_hash(vpfn) % TLB_L2_GIGA_ENTRIES], te, sizeof(struct tlbe));
     }
     break;
 
   case 3:	// 2MB page
     vpfn = vaddr & HUGE_PFN_MASK;
     ppfn = paddr & HUGE_PFN_MASK;
-    te = &l1tlb_2m[tlb_hash(vpfn) % 32];
+    te = &l1tlb_2m[tlb_hash(vpfn) % TLB_L1_HUGE_ENTRIES];
     te->hugepage = true;
 
     // Fall through...
@@ -96,13 +96,13 @@ void TwoLevelTLB::tlb_insert(uint64_t vaddr, uint64_t paddr, unsigned int level)
     if(level == 4) {
       vpfn = vaddr & BASE_PFN_MASK;
       ppfn = paddr & BASE_PFN_MASK;
-      te = &l1tlb_4k[tlb_hash(vpfn) % 64];
+      te = &l1tlb_4k[tlb_hash(vpfn) % TLB_L1_BASE_ENTRIES];
       te->hugepage = false;
     }
     if(te->present) {
       // Move previous entry down
       assert(te->vpfn != vpfn);
-      memcpy(&l2tlb_2m4k[tlb_hash(vpfn) % 1536], te, sizeof(struct tlbe));
+      memcpy(&l2tlb_2m4k[tlb_hash(vpfn) % TLB_L2_HUGE_BASE_ENTRIES], te, sizeof(struct tlbe));
     }
     break;
   }

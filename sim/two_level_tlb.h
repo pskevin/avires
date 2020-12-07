@@ -21,8 +21,8 @@ public:
 private:
   PIN_MUTEX tlb_lock;
 
-  tlbe l1tlb_1g[4], l1tlb_2m[32], l1tlb_4k[64];
-  tlbe l2tlb_1g[16], l2tlb_2m4k[1536];
+  tlbe l1tlb_1g[TLB_L1_GIGA_ENTRIES], l1tlb_2m[TLB_L1_HUGE_ENTRIES], l1tlb_4k[TLB_L1_BASE_ENTRIES];
+  tlbe l2tlb_1g[TLB_L2_GIGA_ENTRIES], l2tlb_2m4k[TLB_L2_HUGE_BASE_ENTRIES];
 };
 
 #endif

@@ -39,6 +39,12 @@
 #define CACHELINE_SIZE	64
 #define MMM_LINE_SIZE	256
 
+#define TLB_L1_GIGA_ENTRIES 1
+#define TLB_L1_HUGE_ENTRIES 4
+#define TLB_L1_BASE_ENTRIES 16
+#define TLB_L2_GIGA_ENTRIES 4
+#define TLB_L2_HUGE_BASE_ENTRIES 48
+
 // Simulated execution times in ns
 #define TIME_PAGEFAULT		2000		// pagefault interrupt
 #define TIME_PAGEWALK		200		// 1 level of pagewalk
