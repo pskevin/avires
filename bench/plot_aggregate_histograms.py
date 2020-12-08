@@ -20,7 +20,9 @@ def compute_mmgr_plot(agg_dir, name):
 
   plt.figure()
   plt.bar(np.arange(2), mmgr_avg[:2], yerr=mmgr_std[:2], tick_label=['FastMem', 'SlowMem'])
-  plt.yscale('log')
+  # plt.yscale('log')
+  plt.ylim(0, 1000000)
+  plt.yticks([200000 * i for i in range(5)])
   plt.title('Memory Manager Aggregate Statistics')
   plt.savefig('{}_mmgr_plot.png'.format(name))
 
@@ -80,10 +82,54 @@ def compute_hierarchy_plot(agg_dir, names, labels):
   
   plt.figure()
   plt.bar(np.arange(len(names)), cache_avgs, yerr=cache_stds, tick_label=labels)
+  plt.title('Cache')
+  plt.ylabel('Hit Rate')
   plt.savefig('cache_plot.png')
 
   plt.figure()
   plt.bar(np.arange(len(names)), tlb_avgs, yerr=tlb_stds, tick_label=labels)
+  plt.title('TLB')
+  plt.ylabel('Hit Rate')
   plt.savefig('tlb_plot.png')
 
 compute_hierarchy_plot(dir, ['hotset_simple', 'rndm_write_simple', 'seq_write_simple'], ['Hotset', 'Random', 'Sequential'])
+
+def compute_runtime_plot(agg_dir, names, labels, access):
+  assert(len(names) == len(labels))
+
+  runtime_avgs = []
+  runtime_stds = []
+
+  for i in range(len(names)):
+    name = names[i]
+    label = labels[i]
+
+    runtime_agg_file = open(os.path.join(agg_dir, name, 'gups_{}_runtime_agg.out'.format(name)))
+    runtime_stats = []
+    for line in runtime_agg_file:
+      if line.split(',')[0] != 'RUNTIME':
+        runtime_stats.append((int(line.strip().split(',')[0])))
+
+    runtime_stats = np.array(runtime_stats)
+
+    runtime_avg = np.average(runtime_stats)
+    runtime_std = np.std(runtime_stats)
+
+    runtime_avgs.append(runtime_avg)
+    runtime_stds.append(runtime_std)
+  
+  plt.figure()
+  plt.bar(np.arange(len(names)), runtime_avgs, yerr=runtime_stds, tick_label=labels)
+  plt.title('Memory Access Runtime')
+  plt.yscale('log')
+  plt.yticks([5e8, 1e9, 2e9])
+  plt.savefig('runtime_{}_plot.png'.format(access))
+
+runtime_experiments = [
+  (args.agg_dir, ['hotset_linux', 'hotset_simple'],  ['linux', 'simple'], 'hotset'),
+  (args.agg_dir, ['rndm_write_linux', 'rndm_write_simple'],  ['linux', 'simple'], 'rndm'),
+  (args.agg_dir, ['seq_write_linux', 'seq_write_simple'], ['linux', 'simple'], 'seq'),
+]
+
+for exp in runtime_experiments:
+  compute_runtime_plot(*exp)
