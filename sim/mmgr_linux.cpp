@@ -8,7 +8,7 @@ int LinuxMemoryManager::listnum(struct pte *pte)
   
   PIN_MutexLock(&global_lock);
   
-  uint64_t framenum = (pte->addr & SLOWMEM_MASK) / BASE_PAGE_SIZE;
+  uint64_t framenum = (pte->addr & SLOWMEM_MASK) / page_size(pt_);
 
   for(struct page *p = pages_active[SLOWMEM].first; p != NULL; p = p->next) {
     if(p->framenum == framenum) {
@@ -97,7 +97,7 @@ void LinuxMemoryManager::shrink_caches(struct fifo_queue *pages_active,
     if(p->pte->accessed) {
       // XXX: Dangerous. Introduce soft accessed bit instead, like Linux?
       p->pte->accessed = false;
-      sim_->tlb_shootdown(p->framenum * BASE_PAGE_SIZE);
+      sim_->tlb_shootdown(p->framenum * page_size(pt_));
       enqueue_fifo(pages_active, p);
     } else {
       // XXX: Dangerous. Introduce soft accessed bit instead, like Linux?
@@ -138,7 +138,7 @@ uint64_t LinuxMemoryManager::getmem(uint64_t addr, struct pte *pte)
       enqueue_fifo(&pages_active[FASTMEM], newpage);
 
       PIN_MutexUnlock(&global_lock);
-      return newpage->framenum * BASE_PAGE_SIZE;
+      return newpage->framenum * page_size(pt_);
     }
 
     // Move a page to cold memory
@@ -162,7 +162,7 @@ uint64_t LinuxMemoryManager::getmem(uint64_t addr, struct pte *pte)
 
       // Remap page
       np->pte = p->pte;
-      np->pte->addr = (np->framenum * BASE_PAGE_SIZE) | SLOWMEM_BIT;
+      np->pte->addr = (np->framenum * page_size(pt_)) | SLOWMEM_BIT;
       sim_->tlb_shootdown(0);
 
       // Put on slowmem inactive list
@@ -201,12 +201,12 @@ void LinuxMemoryManager::pagefault(uint64_t addr, bool readonly)
 {
   assert(!readonly);
   // Allocate page tables
-  struct pte *pte = alloc_ptables(addr, BASE_PAGE);
+  struct pte *pte = alloc_ptables(addr, pt_);
   pte->present = true;
   pte->pagemap = true;
 
   pte->addr = getmem(addr, pte);
-  assert((pte->addr & BASE_PAGE_MASK) == 0);	// Must be aligned
+  assert((pte->addr & page_mask(pt_)) == 0);	// Must be aligned
 }
 
 void swapHelper(void* mgr) {
@@ -218,13 +218,13 @@ void LinuxMemoryManager::init(MemorySimulator* sim)
   sim_ = sim;
   sim->setCR3(pml4);
   PIN_MutexInit(&global_lock);
-  struct page *p = (page*)calloc(FASTMEM_PAGES, sizeof(struct page));
-  for(uint32_t i = 0; i < FASTMEM_PAGES; i++) {
+  struct page *p = (page*)calloc(fastmem_pages, sizeof(struct page));
+  for(uint32_t i = 0; i < fastmem_pages; i++) {
     p[i].framenum = i;
     enqueue_fifo(&pages_free[FASTMEM], &p[i]);
   }
-  p = (page*) calloc(SLOWMEM_PAGES, sizeof(struct page));
-  for(uint32_t i = 0; i < SLOWMEM_PAGES; i++) {
+  p = (page*) calloc(slowmem_pages, sizeof(struct page));
+  for(uint32_t i = 0; i < slowmem_pages; i++) {
     p[i].framenum = i;
     enqueue_fifo(&pages_free[SLOWMEM], &p[i]);
   }
@@ -270,7 +270,7 @@ void LinuxMemoryManager::kswapd(void *arg)
 
           // Remap page
           np->pte = p->pte;
-          np->pte->addr = np->framenum * BASE_PAGE_SIZE;
+          np->pte->addr = np->framenum * page_size(pt_);
           sim_->tlb_shootdown(0);
 
           // Put on fastmem active list
@@ -294,7 +294,7 @@ void LinuxMemoryManager::kswapd(void *arg)
         if(np != NULL) {
           // Remap page
           np->pte = cp->pte;
-          np->pte->addr = (np->framenum * BASE_PAGE_SIZE) | SLOWMEM_BIT;
+          np->pte->addr = (np->framenum * page_size(pt_)) | SLOWMEM_BIT;
           sim_->tlb_shootdown(0);
 
           // Put on slowmem inactive list

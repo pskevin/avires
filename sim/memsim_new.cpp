@@ -7,10 +7,6 @@
 void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t size, uint64_t timestep)
 {
     int level = -1;
-    // assert(timestep == v_addrs.size());
-    if (profiling_) {
-        v_addrs.push_back(addr);
-    }
     uint64_t initial_runtime = runtime;
 
     // Must be canonical addr
@@ -78,6 +74,8 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     if (profiling_) {
         assert(runtime - initial_runtime >= 0);
         runtime_profile.Set(timestep, "RUNTIME", runtime - initial_runtime);
+        runtime_profile.Set(timestep, "VADDR", addr);
+        mmgr_profile.Set(timestep, "VADDR", addr);
     }
 }
 
@@ -263,14 +261,6 @@ void MemorySimulator::WriteStatsFiles(std::string out_prefix)
         runtime_file << runtime_profile.String() << std::endl;
     }
     runtime_file.close();
-
-    std::ofstream vaddr_file((out_prefix + "vaddrs.out").c_str(), ios::out);
-    if (vaddr_file.is_open()) {
-        for(const auto v_addr : v_addrs) {
-            vaddr_file << v_addr << std::endl;
-        }
-    }
-    vaddr_file.close();
 }
 
 CacheManager* MemorySimulator::GetCacheManager() 

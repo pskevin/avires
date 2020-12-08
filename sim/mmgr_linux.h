@@ -4,9 +4,6 @@
 #define NR_PAGES		32
 #define KSWAPD_INTERVAL		S(1)	// In ns
 
-#define FASTMEM_PAGES	(FASTMEM_SIZE / BASE_PAGE_SIZE)
-#define SLOWMEM_PAGES	(SLOWMEM_SIZE / BASE_PAGE_SIZE)
-
 struct page {
   struct page	*next, *prev;
   uint64_t	framenum;
@@ -26,6 +23,11 @@ class LinuxMemoryManager: public MemoryManager {
     void kswapd(void *arg);
     void shutdown();
 
+    LinuxMemoryManager(enum pagetypes pt) : pt_(pt) {
+      fastmem_pages = FASTMEM_SIZE / page_size(pt);
+      slowmem_pages = SLOWMEM_SIZE / page_size(pt);
+    };
+
   private:
     int listnum(struct pte *pte);
     void enqueue_fifo(struct fifo_queue *queue, struct page *entry);
@@ -37,6 +39,9 @@ class LinuxMemoryManager: public MemoryManager {
     pte *alloc_ptables(uint64_t addr, enum pagetypes pt);
     struct pte pml4[512]; // Top-level page table (we only emulate one process)
     struct fifo_queue pages_active[NMEMTYPES], pages_inactive[NMEMTYPES], pages_free[NMEMTYPES];
+    enum pagetypes pt_;
+    uint64_t fastmem_pages, slowmem_pages;
+
     PIN_MUTEX global_lock;
     MemorySimulator* sim_;
     PIN_TLS_INDEX in_kswapd; 

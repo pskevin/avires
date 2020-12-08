@@ -8,22 +8,20 @@
 #include "memsim_new.h"
 #include <stdlib.h>
 
-#define PAGE_TYPE	BASE_PAGE
-
 uint64_t SimpleMemoryManager::getmem(uint64_t addr, struct pte *pte)
 {
   uint64_t ret;
 
   if(fastmem < FASTMEM_SIZE) {
     ret = fastmem;
-    fastmem += page_size(PAGE_TYPE);
+    fastmem += page_size(pt_);
   } else {
     assert(slowmem < SLOWMEM_SIZE);
     ret = slowmem | SLOWMEM_BIT;
-    slowmem += page_size(PAGE_TYPE);
+    slowmem += page_size(pt_);
   }
 
-  assert((ret & page_mask(PAGE_TYPE)) == 0);	// Must be aligned
+  assert((ret & page_mask(pt_)) == 0);	// Must be aligned
   return ret;
 }
 
@@ -51,7 +49,7 @@ void SimpleMemoryManager::pagefault(uint64_t addr, bool readonly)
 {
   assert(!readonly);
   // Allocate page tables
-  struct pte *pte = alloc_ptables(addr, PAGE_TYPE);
+  struct pte *pte = alloc_ptables(addr, pt_);
   pte->present = true;
   pte->pagemap = true;
 

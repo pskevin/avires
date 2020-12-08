@@ -68,7 +68,7 @@ VOID Instruction(INS ins, VOID *v)
     // Iterate over each memory operand of the instruction.
     for (UINT32 memOp = 0; memOp < memOperands; memOp++)
     {
-        if (INS_MemoryOperandIsRead(ins, memOp))
+        if (INS_MemoryOperandIsRead(ins, memOp) && INS_IsStackRead(ins))
         {
             //  const ADDRINT iaddr = INS_Address(ins);
             // const uint64_t instId = profile.Map(iaddr);
@@ -85,7 +85,7 @@ VOID Instruction(INS ins, VOID *v)
         // Note that in some architectures a single memory operand can be 
         // both read and written (for instance incl (%eax) on IA-32)
         // In that case we instrument it once for read and once for write.
-        if (INS_MemoryOperandIsWritten(ins, memOp))
+        if (INS_MemoryOperandIsWritten(ins, memOp) && INS_IsStackWrite(ins))
         {
             const uint64_t size = INS_MemoryWriteSize(ins);
 
@@ -146,11 +146,11 @@ int main(int argc, char * argv[])
     {
         case 0:
             if (KnobWrite) std::cout << "Running with Simple Memory Manager" << std::endl;
-            mgr = new SimpleMemoryManager();
+            mgr = new SimpleMemoryManager(BASE_PAGE);
             break;
         case 1:
             if (KnobWrite) std::cout << "Running with Linux Memory Manager" << std::endl;
-            mgr = new LinuxMemoryManager();
+            mgr = new LinuxMemoryManager(BASE_PAGE);
             break;
 
     default:
