@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--bucket_file', type=str, required=True)
 parser.add_argument('--timesteps', type=int, required=True)
-parser.add_argument('--addr_start', type=int)
+parser.add_argument('--addr_start_file', type=str)
 parser.add_argument('--title', type=str, required=True)
 parser.add_argument('--out_name', type=str, required=True)
 
@@ -33,17 +33,22 @@ with open(args.bucket_file) as bucket_file:
     if line_idx >= bucket_lines:
       break
 
-uniq_buckets = np.sort(np.unique(buckets))
+if args.addr_start_file:
+  with open(args.addr_start_file) as addr_start_file:
+    start = float(addr_start_file.readlines()[0].strip()[:-len('0000e+14')]) * 1e14
+else:
+  uniq_buckets = np.sort(np.unique(buckets))
+
+
 
 for i in range(bucket_lines):
-  if (args.addr_start):
-    buckets[i] = (buckets[i] - args.addr_start) / PAGE_SIZE
+  if (args.addr_start_file):
+    buckets[i] = (buckets[i] - start) / PAGE_SIZE
   else:
     bucket_val = uniq_buckets[np.where(uniq_buckets == buckets[i])][0]
     buckets[i] = np.where(uniq_buckets == bucket_val)[0]
 
-
-plt.scatter(np.arange(bucket_lines), buckets, s=1)
+plt.scatter(np.arange(bucket_lines), buckets, s=1.5)
 plt.ylabel('Page Number')
 plt.ylim(0, 32)
 plt.xlabel('Time')
