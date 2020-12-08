@@ -35,6 +35,7 @@ struct gups_args
   uint64_t elt_size; // size of elements
   uint64_t hotsize;  //size of hotset
   uint64_t hotstart; // start of hotset
+  float prob;        //probability of sampling hotset
 };
 
 static unsigned long updates, nelems;
@@ -57,6 +58,7 @@ static void *do_gups(void *arguments)
   char data[elt_size];
   uint64_t lfsr;
   uint64_t hot_num;
+  float p;
 
   srand(0);
   lfsr = rand();
@@ -66,46 +68,41 @@ static void *do_gups(void *arguments)
 
   for (i = 0; i < args->iters; i++)
   {
-    if (args->hotsize > 0)
+
+    p = rand()/RAND_MAX;
+
+    if (p < args->prob)
     {
-#if SEQUENTIAL_ACCESS
-      hot_num = args->hotsize;
-#else
-      hot_num = lfsr % 4 + args->hotsize;
-#endif
+#if !SEQUENTIAL_ACCESS
+      lfsr = lfsr_fast(lfsr);
+      index1 = args->hotstart + (lfsr % args->hotsize);
 
-      for (j = 0; j < hot_num; j++)
-      {
-#if SEQUENTIAL_ACCESS
-          index1 = args->hotstart + j;
-#else
-        lfsr = lfsr_fast(lfsr);
-        index1 = args->hotstart + (lfsr % args->hotsize);
-#endif
-          // printf("\nhot %d", index1);
-          memcpy(data, &field[index1 * elt_size], elt_size);
+      // printf("\nhot %d", index1);
+      memcpy(data, &field[index1 * elt_size], elt_size);
 #if WRITE_UPDATE
-          memset(data, data[0] + i, elt_size);
-          memcpy(&field[index1 * elt_size], data, elt_size);
+      memset(data, data[0] + i, elt_size);
+      memcpy(&field[index1 * elt_size], data, elt_size);
 #endif
-      }
-      i += hot_num;
+#endif
     }
+    else
+    {
 
 #if SEQUENTIAL_ACCESS
-    index2 = i % args->size;
+      index2 = i % args->size;
 #else
-    lfsr = lfsr_fast(lfsr);
-    index2 = lfsr % (args->size);
+      lfsr = lfsr_fast(lfsr);
+      index2 = lfsr % (args->size);
 #endif
 
-    // printf("\nreg %d", index2);
-    memcpy(data, &field[index2 * elt_size], elt_size);
+      // printf("\nreg %d", index2);
+      memcpy(data, &field[index2 * elt_size], elt_size);
 
 #if WRITE_UPDATE
-    memset(data, data[0] + i, elt_size);
-    memcpy(&field[index2 * elt_size], data, elt_size);
+      memset(data, data[0] + i, elt_size);
+      memcpy(&field[index2 * elt_size], data, elt_size);
 #endif
+    }
   }
   return 0;
 }
@@ -113,7 +110,7 @@ static void *do_gups(void *arguments)
 int main(int argc, char **argv)
 {
   int threads;
-  unsigned long expt, hotset_frac, hotstart_frac;
+  unsigned long expt, hotset_percentage, hotstart_frac, hotset_prob;
   unsigned long size, elt_size;
   uint64_t hotsize, hotstart;
 
@@ -125,15 +122,16 @@ int main(int argc, char **argv)
   // pid_t pid = getpid();
   // printf("\npid: %d\n", pid);
 
-  if (argc != 7)
+  if (argc != 8)
   {
-    printf("Usage: %s [threads] [updates per thread] [exponent] [data size (bytes)] [hotset start (\%)] [hotset size (\%)]\n", argv[0]);
+    printf("Usage: %s [threads] [updates per thread] [exponent] [data size (bytes)] [hotset start (\%)] [hotset size (\%)] [hotset ratio (\%)]\n", argv[0]);
     printf("  threads\t\t\tnumber of threads to launch\n");
     printf("  updates per thread\t\tnumber of updates per thread\n");
     printf("  exponent\t\t\tlog size of region\n");
     printf("  data size\t\t\tsize of data in array (in bytes)\n");
     printf("  hotset start\t\t\tstarting from (in percentage)\n");
     printf("  hotset size\t\t\tnumber of elements (in percentage)\n");
+    printf("  hotset ratio\t\t\tnumber of elements (in percentage)\n");
 
     return 0;
   }
@@ -153,12 +151,14 @@ int main(int argc, char **argv)
   elt_size = atoi(argv[4]);
   nelems = (size / threads) / elt_size; // number of elements per thread
   hotstart_frac = atoi(argv[5]);
-  hotset_frac = atoi(argv[6]);
+  hotset_percentage = atoi(argv[6]);
+  hotset_prob = atoi(argv[7]);
+  hotset_prob /= 100;
   assert(hotstart_frac >= 0 && hotstart_frac <= 100);
-  assert(hotset_frac + hotstart_frac >= 0 && hotset_frac + hotstart_frac <= 100);
-  assert(hotset_frac >= 0 && hotset_frac <= 100);
+  assert(hotset_percentage + hotstart_frac >= 0 && hotset_percentage + hotstart_frac <= 100);
+  assert(hotset_percentage >= 0 && hotset_percentage <= 100);
   hotstart = (uint64_t)nelems * hotstart_frac / 100 - 1;
-  hotsize = (uint64_t)nelems * hotset_frac / 100;
+  hotsize = (uint64_t)nelems * hotset_percentage / 100;
 
   printf("field of 2^%lu (%lu) bytes\n", expt, size);
   printf("%lu updates per thread (%d threads)\n", updates, threads);
@@ -188,6 +188,7 @@ int main(int argc, char **argv)
     ga[i]->elt_size = elt_size;
     ga[i]->hotstart = hotstart;
     ga[i]->hotsize = hotsize;
+    ga[i]->prob = hotset_prob;
     int r = pthread_create(&t[i], NULL, do_gups, (void *)ga[i]);
     assert(r == 0);
   }
