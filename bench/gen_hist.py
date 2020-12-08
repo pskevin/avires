@@ -1,17 +1,16 @@
 import numpy as np
 
 
-# start = np.int64(140328197926912)
-# end = start + 32768
+start = np.int64(140388783198208)
+end = start + 32768
 
-# addrs = np.loadtxt('./results/hist/rndm_write/gups_rndm_write_vaddrs.out', dtype=np.int64)
+addrs = np.loadtxt('./results/hist/hotset/gups_hotset_vaddrs.out', dtype=np.int64)
 
-# addrs = addrs[(addrs >= start) & (addrs <= end)]
+addrs = addrs[(addrs >= start) & (addrs <= end)]
 
-# mask = (1024-1) ^ np.iinfo(np.int64).max
 
-# buckets = addrs & mask
+mask = (1024-1) ^ np.iinfo(np.int64).max
 
-# np.savetxt('./results/hist/rndm_write/gups_rndm_write_buckets.out')
+buckets = addrs & mask
 
-addrs = np.loadtxt('./results/hist/rndm_write/gups_rndm_write_vaddrs.out', dtype=np.int64)
+np.savetxt('./results/hist/hotset/gups_hotset_buckets.out', buckets)
