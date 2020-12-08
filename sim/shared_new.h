@@ -53,11 +53,11 @@
 #define TIME_TLBSHOOTDOWN	4000		// TLB shootdown
 
 // From Intel memory latency checker
-#define TIME_FASTMEM_READ	81
-#define TIME_FASTMEM_WRITE	86
+#define TIME_FASTMEM_READ	82
+#define TIME_FASTMEM_WRITE	82
 
-#define TIME_SLOWMEM_READ	169		// From DCPMM QoS slides
-#define TIME_SLOWMEM_WRITE 90		// maybe worse?
+#define TIME_SLOWMEM_READ	1000		// From DCPMM QoS slides
+#define TIME_SLOWMEM_WRITE	1000		// maybe worse?
 
 #define TIME_CACHE_READ	1
 #define TIME_CACHE_WRITE 2
@@ -137,3 +137,5 @@ static inline uint64_t page_mask(enum pagetypes pt)
 
 
 #endif
+
+hotset_linux rndm_write_linux seq_write_linux hotset_simple rndm_write_simple seq_write_simple rndm_read_linux seq_read_linux rndm_read_simple seq_read_simple
