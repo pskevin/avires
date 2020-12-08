@@ -23,7 +23,7 @@
 uint64_t hot_start = 0;
 
 #define SEQUENTIAL_ACCESS 0 // 0 = Random, 1 = Sequential
-#define WRITE_UPDATE 0      // 0 = Read, 1 = Write
+#define WRITE_UPDATE 1      // 0 = Read, 1 = Write
 
 struct gups_args
 {

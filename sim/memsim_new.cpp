@@ -38,7 +38,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
             printf("BROKEN %lu %lu %d\n", addr, paddr, level);
         }
         
-        assert (paddr != 0);
+        // assert (paddr != 0);
         assert(level != -1);
         // Insert in TLB
         tlb_->tlb_insert(addr, paddr, level);
