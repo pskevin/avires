@@ -69,8 +69,8 @@ static void *do_gups(void *arguments)
   for (i = 0; i < args->iters; i++)
   {
 
-    p = rand()/RAND_MAX;
-
+    p = ((float) rand())/ RAND_MAX;
+    // printf("\nprob p %f %f\n", p, args->prob);
     if (p < args->prob)
     {
 #if !SEQUENTIAL_ACCESS
@@ -110,7 +110,8 @@ static void *do_gups(void *arguments)
 int main(int argc, char **argv)
 {
   int threads;
-  unsigned long expt, hotset_percentage, hotstart_frac, hotset_prob;
+  unsigned long expt, hotset_percentage, hotstart_frac;
+  float hotset_prob;
   unsigned long size, elt_size;
   uint64_t hotsize, hotstart;
 
