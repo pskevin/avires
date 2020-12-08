@@ -122,7 +122,7 @@ struct ProfileCounter {
 
 const std::string cache_profile_options[] = { "MISS", "HIT", "PADDR" };
 const std::string tlb_profile_options[] = { "MISS", "HIT", "VADDR" };
-const std::string mmgr_profile_options[] = { "FASTMEM", "SLOWMEM", "PAGEFAULT", "PADDR" };
+const std::string mmgr_profile_options[] = { "FASTMEM", "SLOWMEM", "PAGEFAULT", "VADDR" };
 const std::string runtime_profile_options[] = { "RUNTIME", "VADDR", "PADDR" };
 
 class MemorySimulator {

@@ -77,7 +77,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     if (profiling_) {
         runtime_profile.Set(timestep, "VADDR", addr);
         runtime_profile.Set(timestep, "PADDR", paddr);
-        mmgr_profile.Set(timestep, "PADDR", paddr);
+        mmgr_profile.Set(timestep, "VADDR", addr);
         assert(runtime - initial_runtime >= 0);
         runtime_profile.Set(timestep, "RUNTIME", runtime - initial_runtime);
     }
