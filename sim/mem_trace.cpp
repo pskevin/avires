@@ -146,11 +146,11 @@ int main(int argc, char * argv[])
     {
         case 0:
             if (KnobWrite) std::cout << "Running with Simple Memory Manager" << std::endl;
-            mgr = new SimpleMemoryManager();
+            mgr = new SimpleMemoryManager(BASE_PAGE);
             break;
         case 1:
             if (KnobWrite) std::cout << "Running with Linux Memory Manager" << std::endl;
-            mgr = new LinuxMemoryManager();
+            mgr = new LinuxMemoryManager(BASE_PAGE);
             break;
 
     default:
