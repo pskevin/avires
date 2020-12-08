@@ -18,6 +18,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     {
         if (profiling_) {
             tlb_profile.Increment(timestep, "HIT");
+            tlb_profile.Set(timestep, "VADDR", addr);
         }
         paddr = te->ppfn + (addr & ((1 << (12 + (4 - level) * 9)) - 1));
     }
@@ -25,6 +26,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     {
         if (profiling_) {
             tlb_profile.Increment(timestep, "MISS");
+            tlb_profile.Set(timestep, "VADDR", addr);
         }
 
         paddr = walk_page_table(addr, type, timestep, level);
@@ -44,6 +46,7 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     if (profiling_) {
         const std::string counter = cachehit ? "HIT" : "MISS";
         cache_profile.Increment(timestep, counter);
+        cache_profile.Set(timestep, "PADDR", paddr);
     }
 
     if(cachehit) 
@@ -72,10 +75,11 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
     }
 
     if (profiling_) {
+        runtime_profile.Set(timestep, "VADDR", addr);
+        runtime_profile.Set(timestep, "PADDR", paddr);
+        mmgr_profile.Set(timestep, "VADDR", addr);
         assert(runtime - initial_runtime >= 0);
         runtime_profile.Set(timestep, "RUNTIME", runtime - initial_runtime);
-        runtime_profile.Set(timestep, "VADDR", addr);
-        mmgr_profile.Set(timestep, "VADDR", addr);
     }
 }
 

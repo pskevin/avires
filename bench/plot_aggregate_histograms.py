@@ -115,14 +115,13 @@ def compute_runtime_plot(agg_dir, names, labels, access):
     runtime_avg = np.average(runtime_stats)
     runtime_std = np.std(runtime_stats)
 
-    runtime_avgs.append(runtime_avg)
-    runtime_stds.append(runtime_std)
+    runtime_avgs.append(runtime_avg / 1e9)
+    runtime_stds.append(runtime_std / 1e9)
   
   plt.figure()
   plt.bar(np.arange(len(names)), runtime_avgs, yerr=runtime_stds, tick_label=labels)
   plt.title('Memory Access Runtime')
-  plt.yscale('log')
-  plt.yticks([5e8, 1e9, 2e9])
+  plt.ylabel('Seconds')
   plt.savefig('runtime_{}_plot.png'.format(access))
 
 runtime_experiments = [
