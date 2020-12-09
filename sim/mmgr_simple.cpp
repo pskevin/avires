@@ -3,9 +3,9 @@
  * physical memory linearly (first fast, then slow), and cannot free memory.
  */
 
-#include "shared_new.h"
+#include "shared.h"
 #include "mmgr_simple.h"
-#include "memsim_new.h"
+#include "memsim.h"
 #include <stdlib.h>
 
 uint64_t SimpleMemoryManager::getmem(uint64_t addr, struct pte *pte)

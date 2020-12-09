@@ -1,4 +1,4 @@
-#include "memsim_new.h"
+#include "memsim.h"
 
 #ifndef TWO_LEVEL_TLB_H
 #define TWO_LEVEL_TLB_H

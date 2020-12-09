@@ -362,7 +362,7 @@ bool CACHE<SET, MAX_SETS, STORE_ALLOCATION>::AccessSingleLine(ADDRINT addr, ACCE
 
 #ifndef L1_DATA_CACHE_H
 #define L1_DATA_CACHE_H
-#include "memsim_new.h"
+#include "memsim.h"
 
 #include <sstream>
 #include <string>

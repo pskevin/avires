@@ -1,4 +1,4 @@
-#include "memsim_new.h"
+#include "memsim.h"
 #include "pin.H"
 
 #define NR_PAGES		32

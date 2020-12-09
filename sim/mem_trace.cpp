@@ -1,28 +1,15 @@
-/*
- * Copyright 2002-2020 Intel Corporation.
- * 
- * This software is provided to you as Sample Source Code as defined in the accompanying
- * End User License Agreement for the Intel(R) Software Development Products ("Agreement")
- * section 1.L.
- * 
- * This software and the related documents are provided as is, with no express or implied
- * warranties, other than those that are expressly stated in the License.
- */
+// This is the main pin tool which runs a given application instrumented with Memsim
 
 #include <iostream>
 
 #include "pin.H"
-// #include <cassert>
-#include <unordered_map>
 
-#include "memsim_new.h"
+#include "memsim.h"
 #include "two_level_tlb.h"
 #include "l1_data_cache.h"
 
 #include "mmgr_simple.h"
 #include "mmgr_linux.h"
-
-// std::unordered_map<uint64_t, int> hashmap;
 
 using std::cerr;
 using std::ofstream;
@@ -41,14 +28,14 @@ MemorySimulator* sim;
 
 volatile uint64_t timestep = 0;
 
-// Print a memory read record
+// Interpose Memory Reads
 VOID RecordMemRead(uint64_t addr, uint32_t size)
 {   
     sim->memaccess(addr, TYPE_READ, size, timestep);
     timestep++;
 }
 
-// Print a memory write record
+// Interpose Memory Writes
 VOID RecordMemWrite(uint64_t addr, uint32_t size)
 {
     sim->memaccess(addr, TYPE_WRITE, size, timestep);
@@ -68,11 +55,8 @@ VOID Instruction(INS ins, VOID *v)
     // Iterate over each memory operand of the instruction.
     for (UINT32 memOp = 0; memOp < memOperands; memOp++)
     {
-        if (INS_MemoryOperandIsRead(ins, memOp) && INS_IsStackRead(ins))
+        if (INS_MemoryOperandIsRead(ins, memOp))
         {
-            //  const ADDRINT iaddr = INS_Address(ins);
-            // const uint64_t instId = profile.Map(iaddr);
-
             const uint64_t size = INS_MemoryReadSize(ins);
             // const BOOL single = (size <= 4);
             INS_InsertPredicatedCall(
@@ -85,7 +69,7 @@ VOID Instruction(INS ins, VOID *v)
         // Note that in some architectures a single memory operand can be 
         // both read and written (for instance incl (%eax) on IA-32)
         // In that case we instrument it once for read and once for write.
-        if (INS_MemoryOperandIsWritten(ins, memOp) && INS_IsStackWrite(ins))
+        if (INS_MemoryOperandIsWritten(ins, memOp))
         {
             const uint64_t size = INS_MemoryWriteSize(ins);
 
@@ -104,7 +88,6 @@ VOID PrepareForFini(VOID *v) {
         ((LinuxMemoryManager*) sim->GetMemoryManager())->shutdown();
     }
 }
-
 
 VOID Fini(INT32 code, VOID *v)
 {

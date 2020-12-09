@@ -1,4 +1,4 @@
-#include "memsim_new.h"
+#include "memsim.h"
 #include <assert.h>
 #include <iostream>
 #include <fstream>
@@ -30,14 +30,9 @@ void MemorySimulator::memaccess(uint64_t addr, memory_access_type type, uint32_t
         }
 
         paddr = walk_page_table(addr, type, timestep, level);
+        
         assert(level >= 2 && level <= 4);
-        
-        if (paddr == 0) {
-            printf("BROKEN %lu %lu %d\n", addr, paddr, level);
-        }
-        
-        // assert (paddr != 0);
-        assert(level != -1);
+
         // Insert in TLB
         tlb_->tlb_insert(addr, paddr, level);
     }

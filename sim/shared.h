@@ -1,8 +1,10 @@
 #include <stdint.h>
 #include <stddef.h>
+// Cannot be used because of PIN
 // #include <atomic>
 #include <assert.h>
 #include "inttypes.h"
+
 
 #ifndef MEMSIM_SHARED_H
 #define MEMSIM_SHARED_H
@@ -137,5 +139,3 @@ static inline uint64_t page_mask(enum pagetypes pt)
 
 
 #endif
-
-// hotset_linux rndm_write_linux seq_write_linux hotset_simple rndm_write_simple seq_write_simple rndm_read_linux seq_read_linux rndm_read_simple seq_read_simple

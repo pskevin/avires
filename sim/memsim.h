@@ -1,11 +1,9 @@
 #ifndef MEMSIM_H
 #define MEMSIM_H
 #include <stdint.h>
-// typedef uint64_t CACHE_STATS; // type of cache hit/miss counters
 #include <stddef.h>
-#include <semaphore.h>
 #include <sstream>      // std::stringstream
-#include "shared_new.h"
+#include "shared.h"
 #include "pin.H"
 #include "pin_profile.H"
 
@@ -108,12 +106,17 @@ struct ProfileCounter {
     }
 
     for(const auto& l : labels) {
-      ss << l << ", ";
+      if (l.find("ADDR") == std::string::npos) {
+        ss << l << ", ";
+      }
     }
     ss << std::endl;
 
     for(const auto& l : labels) {
-      ss << aggregate_counts[label_map[l]] << ", ";
+      // We dont' care about aggregated addresses
+      if (l.find("ADDR") == std::string::npos) {
+        ss << aggregate_counts[label_map[l]] << ", ";
+      }
     }
 
     return ss.str();

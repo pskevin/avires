@@ -73,7 +73,7 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 # Build the intermediate object file.
-$(OBJDIR)mem_trace$(OBJ_SUFFIX): mem_trace.cpp $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_linux$(OBJ_SUFFIX) $(OBJDIR)memsim_new$(OBJ_SUFFIX) $(OBJDIR)two_level_tlb$(OBJ_SUFFIX)
+$(OBJDIR)mem_trace$(OBJ_SUFFIX): mem_trace.cpp $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_linux$(OBJ_SUFFIX) $(OBJDIR)memsim$(OBJ_SUFFIX) $(OBJDIR)two_level_tlb$(OBJ_SUFFIX)
 	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 
 $(OBJDIR)l1_data_cache$(OBJ_SUFFIX): l1_data_cache.cpp l1_data_cache.h
@@ -92,10 +92,10 @@ $(OBJDIR)mmgr_linux$(OBJ_SUFFIX): mmgr_linux.cpp mmgr_linux.h
 	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
-$(OBJDIR)memsim_new$(OBJ_SUFFIX): memsim_new.cpp memsim_new.h shared_new.h
+$(OBJDIR)memsim$(OBJ_SUFFIX): memsim.cpp memsim.h shared.h
 	$(CXX) -std=c++14 $(TOOL_CXXFLAGS) -ltr $(COMP_OBJ)$@ $<
 
 # Build the tool as a dll (shared object).
-$(OBJDIR)mem_trace$(PINTOOL_SUFFIX): $(OBJDIR)mem_trace$(OBJ_SUFFIX) $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_linux$(OBJ_SUFFIX) $(OBJDIR)memsim_new$(OBJ_SUFFIX) $(OBJDIR)two_level_tlb$(OBJ_SUFFIX) $(OBJDIR)l1_data_cache$(OBJ_SUFFIX)
+$(OBJDIR)mem_trace$(PINTOOL_SUFFIX): $(OBJDIR)mem_trace$(OBJ_SUFFIX) $(OBJDIR)mmgr_simple$(OBJ_SUFFIX) $(OBJDIR)mmgr_linux$(OBJ_SUFFIX) $(OBJDIR)memsim$(OBJ_SUFFIX) $(OBJDIR)two_level_tlb$(OBJ_SUFFIX) $(OBJDIR)l1_data_cache$(OBJ_SUFFIX)
 	$(LINKER) $(TOOL_LDFLAGS_NOOPT) $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
 
