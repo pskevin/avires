@@ -41,31 +41,35 @@ if __name__ == '__main__':
     }
 
     pin_bins = {
-        'rndm': '../sim/obj-intel64/mem_trace_rndm.so',
-        'seq': '../sim/obj-intel64/mem_trace_seq.so'
+        'rndm': '../sim/obj-intel64/mem_trace.so',
+        'seq': '../sim/obj-intel64/mem_trace.so'
     }
 
     gups_bins = {
             'rndm': [
                 '../apps/gups/obj/gups_rndm_write.o',
-                '../apps/gups/obj/gups_rndm_read.o',
+                # '../apps/gups/obj/gups_rndm_read.o',
                 '../apps/gups/obj/gups_hotset.o'
             ],
             'seq': [
             '../apps/gups/obj/gups_seq_write.o',
-            '../apps/gups/obj/gups_seq_read.o',
+            # '../apps/gups/obj/gups_seq_read.o',
             ]
     }
 
-    for (pin_type, gups_type) in zip(pin_bins, gups_bins):
-        pin_bin = pin_bins[pin_type]
-        for gups_bin in gups_bins[gups_type]:
-            experiment = gups_bin.split('gups_')[-1].split('.')[0]
-            for (mmgr, flag) in mmgrs.items():
-                name = '{}_{}'.format(experiment, mmgr)
-                out = '-o ./results/{}/gups_{}_'.format(name, name)
-                if experiment == 'hotset':
-                    cmd = pin.format(pin_bin, flag, out, gups_bin, '1 100000 15 8 35 30 90')
-                else:
-                    cmd = pin.format(pin_bin, flag, out, gups_bin, '1 100000 15 8 0 0 0')
-                run_experiment(cmd)
+    runs = 1
+    for i in range(runs):
+        print('\n\n\n \t\t ~ Run {} ~ '.format(i+1))
+        for (pin_type, gups_type) in zip(pin_bins, gups_bins):
+            pin_bin = pin_bins[pin_type]
+            for gups_bin in gups_bins[gups_type]:
+                experiment = gups_bin.split('gups_')[-1].split('.')[0]
+                for (mmgr, flag) in mmgrs.items():
+                    name = '{}_{}'.format(experiment, mmgr)
+                    out = '-o ./results/mmgr_new/{}/gups_{}_'.format(name, name)
+                    if experiment == 'hotset':
+                        cmd = pin.format(pin_bin, flag, out, gups_bin, '1 100000 15 8 35 30 90')
+                    else:
+                        cmd = pin.format(pin_bin, flag, out, gups_bin, '1 100000 15 8 0 0 0')
+                    # print(cmd)
+                    run_experiment(cmd)

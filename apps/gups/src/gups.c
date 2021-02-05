@@ -48,8 +48,15 @@ static uint64_t lfsr_fast(uint64_t lfsr)
   return lfsr;
 }
 
+
+void __parsec_roi_begin(){}
+
+
+
 static void *do_gups(void *arguments)
 {
+
+  __parsec_roi_begin();
   struct gups_args *args = (struct gups_args *)arguments;
   char *field = (char *)(args->field);
   uint64_t i, j;
@@ -104,8 +111,12 @@ static void *do_gups(void *arguments)
 #endif
     }
   }
+
+  __parsec_roi_end();
   return 0;
 }
+
+void __parsec_roi_end(){}
 
 int main(int argc, char **argv)
 {
@@ -139,6 +150,7 @@ int main(int argc, char **argv)
 
   threads = atoi(argv[1]);
   assert(threads <= MAX_THREADS);
+  
   ga = (struct gups_args **)malloc(threads * sizeof(struct gups_args *));
 
   updates = atol(argv[2]);
@@ -148,7 +160,7 @@ int main(int argc, char **argv)
   assert(updates > 0 && (updates % 256 == 0));
   size = (unsigned long)(1) << expt;
   size -= (size % 256);
-  assert(size > 0 && (size % 256 == 0));
+  assert(size > 0 && (size % 256 == 0));  
   elt_size = atoi(argv[4]);
   nelems = (size / threads) / elt_size; // number of elements per thread
   hotstart_frac = atoi(argv[5]);
@@ -209,6 +221,7 @@ int main(int argc, char **argv)
   free(ga);
 
   munmap(p, size);
+
 
   return 0;
 }
