@@ -1,6 +1,8 @@
 # macOS
 .DS_Store
 
+.vscode
+
 # All object binaries
 *.o
 
@@ -10,10 +12,9 @@
 # Linked library [linux]
 *.so
 
-# Output files
-*.out
-
 # Part files
 *.part
 
-.vscode
+# Output files
+*.csv
+*.out

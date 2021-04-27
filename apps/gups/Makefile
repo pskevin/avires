@@ -28,6 +28,9 @@ $(OBJ)/%.part: $(SRC)/%.c
 
 .PHONY: clean_parts clean
 
+test: zipf.c gups.h
+	$(CC) $(CFLAGS) test.c -o $@ $< $(LIBS)
+
 clean_parts:
 	rm $(OBJ)/*.part
 

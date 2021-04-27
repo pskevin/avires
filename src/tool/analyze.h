@@ -1,0 +1,4 @@
+#ifndef MEMSIM_TOOL_ANALYZE_H
+#define MEMSIM_TOOL_ANALYZE_H
+
+#endif

@@ -26,7 +26,7 @@
 #ifdef ZIPFIAN
 
 static const double ZETAN = 26.46902820178302;
-static const double ZIPFIAN_CONSTANT = 0.99;
+static const double ZIPFIAN_CONSTANT = 0.8;
 static unsigned long min, max, itemcount;
 static unsigned long items, base, countforzeta;
 static double zipfianconstant, alpha, zetan, eta, theta, zeta2theta;
@@ -111,7 +111,7 @@ void calc_indices(unsigned long* indices, unsigned long updates, unsigned long n
   FILE* f;
   unsigned int i;
 
-  assert(!"Not thread-safe");
+  // assert(!"Not thread-safe");
   
   f = fopen(INDEX_FILE, "w");
   if (f == NULL) {
@@ -141,11 +141,12 @@ void calc_indices(unsigned long* indices, unsigned long updates, unsigned long n
     ret = min + fnvhash64(ret) % itemcount;
     lastVal = ret;
     indices[i] = ret;
-    //fprintf(f, "%d\n", indices[i]);
+    fprintf(f, "%d\n", indices[i]);
   }
 
   fclose(f);
 }
+
 
 #elif defined HOTSPOT
 
