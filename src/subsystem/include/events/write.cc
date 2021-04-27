@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 
+using std::cerr;
 using std::endl;
 using std::ios;
 using std::ofstream;
@@ -23,11 +24,7 @@ namespace Event
         {
             type = tpair.second;
             LogMessage("Type %s", type->ID());
-
-            // if(type->ID() == "access")
-            // {
-                LogMessage("Count %lld", type->count);
-            // }
+            LogMessage("Count %lld", type->count);
 
             // Vector of sources in order of registration
             vector<string> sources(type->sources_.size());
@@ -35,30 +32,38 @@ namespace Event
             {
                 sources[spair.second] = spair.first;
             }
-
-            ofstream file((file_prefix + "_" + type->ID() + ".out").c_str(), ios::out | ios::trunc);
-            for (uint32_t i = 0; i < sources.size(); i++)
+            
+            string file_name = file_prefix + "_" + type->ID() + ".out";
+            ofstream file(file_name.c_str(), ios::out | ios::trunc);
+            if (file.is_open())
             {
-                LogMessage("Source %s", sources[i]);
-                if (i != 0)
-                    file << ",";
-                file << sources[i];
-            }
-            file << endl;
-
-            LogMessage("Size of data %lld", type->data_.size());
-            for (auto line : type->data_)
-            {
-                for (uint32_t i = 0; i < sources.size(); i++) // line.size <= sources.size
+                for (uint32_t i = 0; i < sources.size(); i++)
                 {
-                    auto lpair = line->find(i); // i is the index mapping source to data
-
+                    LogMessage("Source %s", sources[i]);
                     if (i != 0)
                         file << ",";
-                    if (lpair != line->end())
-                        file << lpair->second;
+                    file << sources[i];
                 }
                 file << endl;
+
+                LogMessage("Size of data %lld", type->data_.size());
+                for (auto line : type->data_)
+                {
+                    for (uint32_t i = 0; i < sources.size(); i++) // line.size <= sources.size
+                    {
+                        auto lpair = line->find(i); // i is the index mapping source to data
+
+                        if (i != 0)
+                            file << ",";
+                        if (lpair != line->end())
+                            file << lpair->second;
+                    }
+                    file << endl;
+                }
+            }
+            else
+            {
+                cerr << "Cannot open file " << file_name << endl;
             }
             file.close();
             LogPoint();
