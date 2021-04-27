@@ -1,212 +1,165 @@
-#define _GNU_SOURCE
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <math.h>
-#include <string.h>
-#include <pthread.h>
-#include <sys/mman.h>
-#include <errno.h>
-#include <inttypes.h>
-
-#include "timer.h"
 #include "gups.h"
+#include "log.h"
 
-#define MAX_THREADS 64
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <assert.h>
+#include <sys/mman.h>
 
-uint64_t hot_start = 0;
-
-#define SEQUENTIAL_ACCESS 0 // 0 = Random, 1 = Sequential
-#define WRITE_UPDATE 1      // 0 = Read, 1 = Write
-
-struct gups_args
+typedef struct Context
 {
-    int tid; // thread id
-    // uint64_t *indices; // array of indices to access
-    void *field;       // pointer to start of thread's region
-    uint64_t iters;    // iterations to perform
-    uint64_t size;     // size of region
-    uint64_t elt_size; // size of elements
-    uint64_t hotsize;  //size of hotset
-    uint64_t hotstart; // start of hotset
-    float prob;        //probability of sampling hotset
-};
+    int tid;                  // thread id
+    void *region;             // pointer to mmaped region
+    uint64_t region_size;     // size of region
+    uint64_t num_updates;     // iterations to perform
+    uint64_t hotset_start;    // start of hotset
+    uint64_t hotset_size;     // size of hotset
+    float access_probability; // probability of sampling hotset
+} Context;
 
-static unsigned long updates, nelems;
-
-static uint64_t lfsr_fast(uint64_t lfsr)
+static void *gups(void *args)
 {
-    lfsr ^= lfsr >> 7;
-    lfsr ^= lfsr << 9;
-    lfsr ^= lfsr >> 13;
-    return lfsr;
-}
+    Context *ctx = (Context *)args;
+    uint64_t *region = (uint64_t *)(ctx->region);
+    uint64_t index, seed;
 
-static void *do_gups(void *arguments)
-{
 
-    __parsec_roi_begin();
-    struct gups_args *args = (struct gups_args *)arguments;
-    char *field = (char *)(args->field);
-    uint64_t i, j;
-    uint64_t index1, index2;
-    uint64_t elt_size = args->elt_size;
-    char data[elt_size];
-    uint64_t lfsr;
-    uint64_t hot_num;
-    float p;
-
-    srand(0);
-    lfsr = rand();
-
-    index1 = 0;
-    index2 = 0;
-
-    for (i = 0; i < args->iters; i++)
+    for (int i = 0; i < ctx->num_updates; i++)
     {
-
-        p = ((float)rand()) / RAND_MAX;
-        if (p < args->prob)
+        switch (ACCESS_PATTERN)
         {
-#if !SEQUENTIAL_ACCESS
-            lfsr = lfsr_fast(lfsr);
-            index1 = args->hotstart + (lfsr % args->hotsize);
+        case RANDOM:
+            if (i == 0)
+            {
+                srand(0);
+                seed = rand();
+            }
+            seed = next_index(seed);
+            float p = ((float)rand()) / RAND_MAX;
 
-            memcpy(data, &field[index1 * elt_size], elt_size);
-#if WRITE_UPDATE
-            memset(data, data[0] + i, elt_size);
-            memcpy(&field[index1 * elt_size], data, elt_size);
-#endif
-#endif
+            if (p < ctx->access_probability)
+                index = ctx->hotset_start + (seed % ctx->hotset_size);
+            else
+                index = seed % ctx->region_size;                
+            break;
+
+        case SEQUENTIAL:
+            index = i % ctx->region_size;
+            break;
+        case ZIPFIAN:
+            break;
         }
-        else
+        LogMessage("index \t %lld", index);
+        uint64_t tmp = region[index];
+        if (ACCESS_TYPE == WRITE)
         {
-
-#if SEQUENTIAL_ACCESS
-            index2 = i % args->size;
-#else
-            lfsr = lfsr_fast(lfsr);
-            index2 = lfsr % (args->size);
-#endif
-
-            memcpy(data, &field[index2 * elt_size], elt_size);
-
-#if WRITE_UPDATE
-            memset(data, data[0] + i, elt_size);
-            memcpy(&field[index2 * elt_size], data, elt_size);
-#endif
+            tmp = tmp + i;
+            region[index] = tmp;
         }
     }
-
-    return 0;
 }
 
 int main(int argc, char **argv)
 {
-    if (argc != 8)
+    if (argc != 7)
     {
-        printf("Usage: %s [threads] [updates per thread] [exponent] [data size (bytes)] [hotset start (\%)] [hotset size (\%)] [hotset ratio (\%)]\n", argv[0]);
+        printf("Usage: %s [threads] [updates per thread] [exponent] [hotset start (\%)] [hotset size (\%)] [access probability (\%)]\n", argv[0]);
         printf("  threads\t\t\tnumber of threads to launch\n");
         printf("  updates per thread\t\tnumber of updates per thread\n");
         printf("  exponent\t\t\tlog size of region\n");
-        printf("  data size\t\t\tsize of data in array (in bytes)\n");
         printf("  hotset start\t\t\tstarting from (in percentage)\n");
         printf("  hotset size\t\t\tnumber of elements (in percentage)\n");
-        printf("  hotset ratio\t\t\tnumber of elements (in percentage)\n");
+        printf("  access probability\t\tprobability of accessing hotset (in percentage)\n");
 
         return 0;
     }
 
-    int threads;
-    unsigned long expt, hotset_percentage, hotstart_frac;
-    float hotset_prob;
-    unsigned long size, elt_size;
-    uint64_t hotsize, hotstart;
+    int num_threads, exponent;
+    uint64_t num_updates, region_size, region_per_thread;
 
-    int i;
-    void *p;
-    struct gups_args **ga;
-    pthread_t t[MAX_THREADS];
+    uint64_t hotset_start, hotset_size;
+    float access_probability;
 
-    threads = atoi(argv[1]);
-    assert(threads <= MAX_THREADS);
+    num_threads = atoi(argv[1]);
+    assert(num_threads <= MAX_THREADS);
 
-    ga = (struct gups_args **)malloc(threads * sizeof(struct gups_args *));
+    // TODO: Figure out from Tim why "256"?
+    num_updates = atol(argv[2]);
+    num_updates -= num_updates % 256;
+    exponent = atoi(argv[3]);
 
-    updates = atol(argv[2]);
-    updates -= updates % 256;
-    expt = atoi(argv[3]);
-    assert(expt > 8);
-    assert(updates > 0 && (updates % 256 == 0));
-    size = (unsigned long)(1) << expt;
-    size -= (size % 256);
-    assert(size > 0 && (size % 256 == 0));
-    elt_size = atoi(argv[4]);
-    nelems = (size / threads) / elt_size; // number of elements per thread
-    hotstart_frac = atoi(argv[5]);
-    hotset_percentage = atoi(argv[6]);
-    hotset_prob = atoi(argv[7]);
-    hotset_prob /= 100;
-    assert(hotstart_frac >= 0 && hotstart_frac <= 100);
-    assert(hotset_percentage + hotstart_frac >= 0 && hotset_percentage + hotstart_frac <= 100);
-    assert(hotset_percentage >= 0 && hotset_percentage <= 100);
-    hotstart = (uint64_t)nelems * hotstart_frac / 100 - 1;
-    hotsize = (uint64_t)nelems * hotset_percentage / 100;
+    assert(exponent > 8);
+    assert(num_updates > 0 && (num_updates % 256 == 0));
 
-    printf("field of 2^%lu (%lu) bytes\n", expt, size);
-    printf("%lu updates per thread (%d threads)\n", updates, threads);
-    printf("%ld byte element size (%ld elements total)\n", elt_size, size / elt_size);
-    printf("Elements per thread: %lu\n", nelems);
-    printf("Hotset starts at %lu of size %lu\n", hotstart, hotsize);
+    region_size = (uint64_t)(1) << exponent;
+    region_size -= (region_size % 256);
 
-    p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    assert(region_size > 0 && (region_size % 256 == 0));
 
-    printf("Region address: %p\t size: %ld\n", p, size);
-    printf("Field addr: 0x%x\n", p);
+    region_per_thread = (region_size / num_threads) / 8; // uint64_t is 8 bytes
 
-    // printf("Initializing thread data\n");
-    for (i = 0; i < threads; ++i)
+    hotset_start = atoi(argv[4]);
+    hotset_size = atoi(argv[5]);
+    assert(hotset_start >= 0 && hotset_start <= 100);
+    assert(hotset_size >= 0 && hotset_size <= 100);
+    assert(hotset_start + hotset_size >= 0 && hotset_start + hotset_size <= 100);
+    access_probability = (float)atoi(argv[6]);
+    assert(access_probability >= 0 && access_probability <= 100);
+    
+    access_probability /= 100;
+    hotset_start = (uint64_t)region_per_thread * hotset_start / 100;
+    hotset_size = (uint64_t)region_per_thread * hotset_size / 100;
+    
+    LogMessage("Field of 2^%lu, i.e, (%lu) bytes", exponent, region_size);
+    LogMessage("%lu region indices per thread (%d threads)", region_per_thread, num_threads);
+    LogMessage("Updates per thread: %lu", num_updates);
+    LogMessage("Hot start(%lld) size(%lld) prob(%f)", hotset_start, hotset_size, access_probability);
+
+    void *region = mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+    LogMessage("Region address: %p\t Size: %ld", region, region_size);
+    LogMessage("Field address: 0x%x", region);
+
+    // Initializing thread data
+    Context **ctxs = (Context **)malloc(num_threads * sizeof(Context *));
+    pthread_t threads[MAX_THREADS];
+
+    for (int i = 0; i < num_threads; ++i)
     {
-        ga[i] = (struct gups_args *)malloc(sizeof(struct gups_args));
-        ga[i]->field = p + (i * nelems * elt_size);
+        ctxs[i] = (Context *)malloc(sizeof(Context));
+        ctxs[i]->region = region + (i * region_per_thread * 8);
     }
 
-    // spawn gups worker threads
-    for (i = 0; i < threads; i++)
+    // Spawn worker threads
+    LogPoint();
+    for (int i = 0; i < num_threads; i++)
     {
-        //printf("starting thread [%d]\n", i);
-        ga[i]->tid = i;
-        ga[i]->iters = updates;
-        ga[i]->size = nelems;
-        ga[i]->elt_size = elt_size;
-        ga[i]->hotstart = hotstart;
-        ga[i]->hotsize = hotsize;
-        ga[i]->prob = hotset_prob;
-        int r = pthread_create(&t[i], NULL, do_gups, (void *)ga[i]);
+        ctxs[i]->tid = i;
+        ctxs[i]->num_updates = num_updates;
+        ctxs[i]->region_size = region_per_thread;
+        ctxs[i]->hotset_start = (region_per_thread*i) + hotset_start;
+        ctxs[i]->hotset_size = hotset_size;
+        ctxs[i]->access_probability = access_probability;
+        int r = pthread_create(&threads[i], NULL, gups, (void *)ctxs[i]);
         assert(r == 0);
     }
 
-    // wait for worker threads
-    for (i = 0; i < threads; i++)
+    // Wait for worker threads
+    for (int i = 0; i < num_threads; i++)
     {
-        int r = pthread_join(t[i], NULL);
+        int r = pthread_join(threads[i], NULL);
         assert(r == 0);
     }
-    printf("Finished running GUPS\n");
 
-    for (i = 0; i < threads; i++)
+    for (int i = 0; i < num_threads; i++)
     {
-        free(ga[i]);
+        free(ctxs[i]);
     }
-    free(ga);
+    free(ctxs);
 
-    munmap(p, size);
+    munmap(region, region_size);
 
     return 0;
 }

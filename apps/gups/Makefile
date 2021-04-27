@@ -6,7 +6,7 @@ LIBS = -lm -lpthread -ldl
 OBJ = ./obj
 SRC = ./src
 
-default: $(OBJ)/gups.o
+default:  $(OBJ)/gups_rndm_read.o $(OBJ)/gups_rndm_write.o $(OBJ)/gups_seq_read.o $(OBJ)/gups_seq_write.o
 
 $(OBJ):
 	@echo "\nOutput directory $(OBJ) doesn't exist. Creating it!"
@@ -14,12 +14,41 @@ $(OBJ):
 
 $(SRC):
 	@echo "\nSource directory $(SRC) doesn't exist. Failing!"
-	false;
+	false; 
 
-$(OBJ)/gups.o: $(OBJ)/gups.part $(OBJ)/zipf.part $(OBJ)/timer.part # TODO(pskevin): Needs to written more concisely
+$(OBJ)/gups_rndm_read.o: $(OBJ)/gups_rndm_read.part $(OBJ)/log.part $(OBJ)/lfsr.part
 	@echo "\nLinking all intermediate objects into single binary."
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(OBJ)/gups.o $^ $(LIBS) -L.
-	$(MAKE) clean_parts
+	$(CC) $(CFLAGS)  $(INCLUDES)  $^ -o $(OBJ)/gups_rndm_read.o $(LIBS) -L.
+
+$(OBJ)/gups_rndm_write.o: $(OBJ)/gups_rndm_write.part $(OBJ)/log.part $(OBJ)/lfsr.part
+	@echo "\nLinking all intermediate objects into single binary."
+	$(CC) $(CFLAGS)  $(INCLUDES)  $^ -o $(OBJ)/gups_rndm_write.o $(LIBS) -L.
+
+$(OBJ)/gups_seq_read.o: $(OBJ)/gups_seq_read.part $(OBJ)/log.part
+	@echo "\nLinking all intermediate objects into single binary."
+	$(CC) $(CFLAGS)  $(INCLUDES)  $^ -o $(OBJ)/gups_seq_read.o $(LIBS) -L.
+
+$(OBJ)/gups_seq_write.o: $(OBJ)/gups_seq_write.part $(OBJ)/log.part
+	@echo "\nLinking all intermediate objects into single binary."
+	$(CC) $(CFLAGS)  $(INCLUDES)  $^ -o $(OBJ)/gups_seq_write.o $(LIBS) -L.
+
+DEBUG=1
+
+$(OBJ)/gups_rndm_read.part: $(SRC)/gups.c
+	$(CC) $(CFLAGS) -DLOGGING=$(DEBUG) -DPATTERN=0 -DTYPE=0 $(INCLUDES) -c $^ -o $@
+
+$(OBJ)/gups_seq_read.part: $(SRC)/gups.c
+	$(CC) $(CFLAGS) -DLOGGING=$(DEBUG) -DPATTERN=1 -DTYPE=0 $(INCLUDES) -c $< -o $@
+
+$(OBJ)/gups_rndm_write.part: $(SRC)/gups.c 
+	$(CC) $(CFLAGS) -DLOGGING=$(DEBUG) -DPATTERN=0 -DTYPE=1 $(INCLUDES) -c $^ -o $@
+
+$(OBJ)/gups_seq_write.part: $(SRC)/gups.c
+	$(CC) $(CFLAGS) -DLOGGING=$(DEBUG) -DPATTERN=1 -DTYPE=1 $(INCLUDES) -c $< -o $@
+
+
+$(OBJ)/log.part: $(SRC)/log.c
+	$(CC) $(CFLAGS) -DLOGGING=$(DEBUG) $(INCLUDES) -c -o $@ $<
 
 $(OBJ)/%.part: $(SRC)/%.c
 	@mkdir -p $(OBJ)
@@ -27,9 +56,6 @@ $(OBJ)/%.part: $(SRC)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 .PHONY: clean_parts clean
-
-test: zipf.c gups.h
-	$(CC) $(CFLAGS) test.c -o $@ $< $(LIBS)
 
 clean_parts:
 	rm $(OBJ)/*.part
