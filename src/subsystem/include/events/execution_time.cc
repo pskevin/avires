@@ -15,7 +15,6 @@ namespace Event
     {
         if(!this->dummy_)
         {
-            LogMessage("%s", source);
             start=read_tsc();
         }
     }
@@ -24,7 +23,6 @@ namespace Event
     {
         if(!this->dummy_)
         {
-            LogMessage("%s", source);
             end=read_tsc()-start;
             Type::Observe(source, end);
         }
