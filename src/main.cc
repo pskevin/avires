@@ -42,7 +42,7 @@ VOID Instruction(INS ins, VOID *v)
     // Iterate over each memory operand of the instruction.
     for (UINT32 memOp = 0; memOp < memOperands; memOp++)
     {
-        accesses_attempted++;
+        accesses_attempted += INS_MemoryOperandElementCount(ins, memOp);
         if ((KnobSkipEveryNth > 1) && accesses_attempted % KnobSkipEveryNth == 0)
             continue;
 
@@ -51,7 +51,7 @@ VOID Instruction(INS ins, VOID *v)
 
         if (INS_MemoryOperandIsRead(ins, memOp))
         {
-            const uint64_t size = INS_MemoryReadSize(ins);
+            const uint64_t size = INS_MemoryOperandSize(ins, memOp);
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)ObserveReadAccess,
                 IARG_MEMORYOP_EA, memOp,
@@ -63,7 +63,7 @@ VOID Instruction(INS ins, VOID *v)
         // In that case we instrument it once for read and once for write.
         if (INS_MemoryOperandIsWritten(ins, memOp))
         {
-            const uint64_t size = INS_MemoryWriteSize(ins);
+            const uint64_t size = INS_MemoryOperandSize(ins, memOp);
 
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)ObserveWriteAccess,
@@ -89,6 +89,9 @@ VOID Fini(INT32 code, VOID *v)
         end = read_tsc() - start;
         cerr << "Time taken to write " << end << endl;
     };
+
+    cerr << "Accesses Observed " << accesses_observed << endl;
+    cerr << "Accesses Attempted " << accesses_attempted << endl;
 }
 
 /* ===================================================================== */
