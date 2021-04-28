@@ -89,9 +89,6 @@ VOID Fini(INT32 code, VOID *v)
         end = read_tsc() - start;
         cerr << "Time taken to write " << end << endl;
     };
-
-    cerr << "Accesses Observed " << accesses_observed << endl;
-    cerr << "Accesses Attempted " << accesses_attempted << endl;
 }
 
 /* ===================================================================== */

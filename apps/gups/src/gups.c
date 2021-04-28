@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <sys/mman.h>
+#include <inttypes.h>
 
 typedef struct Context
 {
@@ -25,7 +26,6 @@ static void *gups(void *args)
     uint64_t *region = (uint64_t *)(ctx->region);
     uint64_t index, seed;
 
-
     for (int i = 0; i < ctx->num_updates; i++)
     {
         switch (ACCESS_PATTERN)
@@ -42,7 +42,7 @@ static void *gups(void *args)
             if (p < ctx->access_probability)
                 index = ctx->hotset_start + (seed % ctx->hotset_size);
             else
-                index = seed % ctx->region_size;                
+                index = seed % ctx->region_size;
             break;
 
         case SEQUENTIAL:
@@ -107,21 +107,31 @@ int main(int argc, char **argv)
     assert(hotset_start + hotset_size >= 0 && hotset_start + hotset_size <= 100);
     access_probability = (float)atoi(argv[6]);
     assert(access_probability >= 0 && access_probability <= 100);
-    
+
     access_probability /= 100;
     hotset_start = (uint64_t)region_per_thread * hotset_start / 100;
     hotset_size = (uint64_t)region_per_thread * hotset_size / 100;
-    
+
     LogMessage("Field of 2^%lu, i.e, (%lu) bytes", exponent, region_size);
     LogMessage("%lu region indices per thread (%d threads)", region_per_thread, num_threads);
     LogMessage("Updates per thread: %lu", num_updates);
     LogMessage("Hot start(%lld) size(%lld) prob(%f)", hotset_start, hotset_size, access_probability);
 
     void *region = mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (region == MAP_FAILED)
+    {
+        perror("mmap");
+        assert(0);
+    }
 
-    LogMessage("Region address: %p\t Size: %ld", region, region_size);
-    LogMessage("Field address: 0x%x", region);
+    printf("Region start: %" PRIuPTR " or %p \tRegion size: %lld\n", (uintptr_t)region, region, region_size);
 
+    uint64_t access = (uint64_t)&region[100];
+
+    printf("Accessed %llu\n", access);
+
+    return 0;
+    
     // Initializing thread data
     Context **ctxs = (Context **)malloc(num_threads * sizeof(Context *));
     pthread_t threads[MAX_THREADS];
@@ -139,7 +149,7 @@ int main(int argc, char **argv)
         ctxs[i]->tid = i;
         ctxs[i]->num_updates = num_updates;
         ctxs[i]->region_size = region_per_thread;
-        ctxs[i]->hotset_start = (region_per_thread*i) + hotset_start;
+        ctxs[i]->hotset_start = (region_per_thread * i) + hotset_start;
         ctxs[i]->hotset_size = hotset_size;
         ctxs[i]->access_probability = access_probability;
         int r = pthread_create(&threads[i], NULL, gups, (void *)ctxs[i]);

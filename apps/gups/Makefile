@@ -32,7 +32,7 @@ $(OBJ)/gups_seq_write.o: $(OBJ)/gups_seq_write.part $(OBJ)/log.part
 	@echo "\nLinking all intermediate objects into single binary."
 	$(CC) $(CFLAGS)  $(INCLUDES)  $^ -o $(OBJ)/gups_seq_write.o $(LIBS) -L.
 
-DEBUG=1
+DEBUG=0
 
 $(OBJ)/gups_rndm_read.part: $(SRC)/gups.c
 	$(CC) $(CFLAGS) -DLOGGING=$(DEBUG) -DPATTERN=0 -DTYPE=0 $(INCLUDES) -c $^ -o $@

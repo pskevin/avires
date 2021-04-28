@@ -26,7 +26,7 @@ KNOB<string> KnobOutputFile(
     KNOB_MODE_WRITEONCE,
     "pintool",
     "o",
-    "experiments/results",
+    "",
     "specify stats output file");
 
 KNOB<uint64_t> KnobSkipEveryNth(

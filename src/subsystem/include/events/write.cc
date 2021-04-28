@@ -14,10 +14,10 @@ using std::string;
 
 namespace Event
 {
-    void Pool::WriteAll(string file_prefix)
+    void Pool::WriteAll(string dir)
     {
         LogPoint();
-        WriteAddress(file_prefix);
+        WriteAddress(dir);
         // Open all files
         Type *type;
         for (auto const &tpair : types_)
@@ -33,7 +33,7 @@ namespace Event
                 sources[spair.second] = spair.first;
             }
             
-            string file_name = file_prefix + "_" + type->ID() + ".out";
+            string file_name = dir + "/" + type->ID() + ".out";
             ofstream file(file_name.c_str(), ios::out | ios::trunc);
             if (file.is_open())
             {
@@ -70,9 +70,9 @@ namespace Event
         }
     }
 
-    void Pool::WriteAddress(string file_prefix)
+    void Pool::WriteAddress(string dir)
     {
-        ofstream file((file_prefix + "_addrs.out").c_str(), ios::out | ios::trunc);
+        ofstream file((dir + "/addrs.out").c_str(), ios::out | ios::trunc);
         file << "vaddr,paddr" << endl;
         for (Address *addr : addrs_)
         {
