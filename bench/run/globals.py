@@ -43,6 +43,9 @@ def out_dir(exp_root, exp_name):
 def experiment_name(file): return os.path.basename(file).split(".")[0]
 
 def cmd(pin_obj,  app_obj, pin_opts="", app_opts=""): 
+    if pin_opts == "":
+        print("No pin opts")
+        return 'pin -t {} -- {} {}'.format(pin_obj, app_obj,app_opts)
     return 'pin -t {} {} -- {} {}'.format(pin_obj,pin_opts,app_obj,app_opts)
 
 def opts(fmt, *conf):
