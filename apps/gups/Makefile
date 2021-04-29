@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -w -O2 -fPIC
+CFLAGS = -g -w -O3 -fPIC
 INCLUDES = -I/usr/local/include
 LIBS = -lm -lpthread -ldl
 

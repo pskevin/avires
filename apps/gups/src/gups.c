@@ -26,7 +26,7 @@ static void *gups(void *args)
     uint64_t *region = (uint64_t *)(ctx->region);
     uint64_t index, seed;
 
-    for (int i = 0; i < ctx->num_updates; i++)
+    for (uint64_t i = 0; i < ctx->num_updates; i++)
     {
         switch (ACCESS_PATTERN)
         {
@@ -51,11 +51,12 @@ static void *gups(void *args)
         case ZIPFIAN:
             break;
         }
-        LogMessage("index \t %lld", index);
-        uint64_t tmp = region[index];
+
+
+        uint64_t tmp = region[index] + i;
+        // uint64_t tmp = *(region+index) + i;
         if (ACCESS_TYPE == WRITE)
         {
-            tmp = tmp + i;
             region[index] = tmp;
         }
     }
@@ -63,6 +64,7 @@ static void *gups(void *args)
 
 int main(int argc, char **argv)
 {
+    
     if (argc != 7)
     {
         printf("Usage: %s [threads] [updates per thread] [exponent] [hotset start (\%)] [hotset size (\%)] [access probability (\%)]\n", argv[0]);
@@ -75,6 +77,9 @@ int main(int argc, char **argv)
 
         return 0;
     }
+
+    printf("Starting GUPS\n");
+    // asm("ud2");
 
     int num_threads, exponent;
     uint64_t num_updates, region_size, region_per_thread;
@@ -128,9 +133,6 @@ int main(int argc, char **argv)
 
     uint64_t access = (uint64_t)&region[100];
 
-    printf("Accessed %llu\n", access);
-
-    return 0;
     
     // Initializing thread data
     Context **ctxs = (Context **)malloc(num_threads * sizeof(Context *));
@@ -170,6 +172,6 @@ int main(int argc, char **argv)
     free(ctxs);
 
     munmap(region, region_size);
-
+    printf("GUPS finished safely.\n");
     return 0;
 }

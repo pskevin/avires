@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-using std::cerr;
+using std::cout;
 using std::endl;
 
 MemorySimulator *memsim;
@@ -18,6 +18,12 @@ uint64_t start = 0, end = 0;
 // Interpose Memory Reads
 VOID ObserveReadAccess(uint64_t vaddr, uint32_t size)
 {
+    accesses_attempted++;
+    if ((KnobSkipEveryNth > 1) && accesses_attempted % KnobSkipEveryNth == 0)
+        return;
+    if ((KnobTakeEveryNth > 1) && accesses_attempted % KnobTakeEveryNth != 0)
+        return;
+
     accesses_observed++;
     memsim->Access(memsim->NewAddress(vaddr, READ_MEM), size);
 }
@@ -25,11 +31,18 @@ VOID ObserveReadAccess(uint64_t vaddr, uint32_t size)
 // Interpose Memory Writes
 VOID ObserveWriteAccess(uint64_t vaddr, uint32_t size)
 {
+    accesses_attempted++;
+    if ((KnobSkipEveryNth > 1) && accesses_attempted % KnobSkipEveryNth == 0)
+        return;
+    if ((KnobTakeEveryNth > 1) && accesses_attempted % KnobTakeEveryNth != 0)
+        return;
+
     accesses_observed++;
     memsim->Access(memsim->NewAddress(vaddr, WRITE_MEM), size);
 }
 
 // Pin calls this function every time a new instruction is encountered
+
 VOID Instruction(INS ins, VOID *v)
 {
     // Instruments memory accesses using a predicated call, i.e.
@@ -37,17 +50,13 @@ VOID Instruction(INS ins, VOID *v)
     //
     // On the IA-32 and Intel(R) 64 architectures conditional moves and REP
     // prefixed instructions appear as predicated instructions in Pin.
+
     UINT32 memOperands = INS_MemoryOperandCount(ins);
 
     // Iterate over each memory operand of the instruction.
     for (UINT32 memOp = 0; memOp < memOperands; memOp++)
     {
-        accesses_attempted += INS_MemoryOperandElementCount(ins, memOp);
-        if ((KnobSkipEveryNth > 1) && accesses_attempted % KnobSkipEveryNth == 0)
-            continue;
-
-        if ((KnobTakeEveryNth > 1) && accesses_attempted % KnobTakeEveryNth != 0)
-            continue;
+        
 
         if (INS_MemoryOperandIsRead(ins, memOp))
         {
@@ -77,17 +86,17 @@ VOID Instruction(INS ins, VOID *v)
 VOID Fini(INT32 code, VOID *v)
 {
     end = read_tsc() - start;
-    cerr << "End-to-End exection time - " << end << endl;
+    cout << "End-to-End exection time - " << end << endl;
     if (!KnobOutputFile.Value().empty())
     {
-        cerr << "Writing observed values." << endl;
+        cout << "Writing observed values." << endl;
         start = read_tsc();
         LogMessage("Total Accesses Observed %lld", accesses_observed);
         LogMessage("Total Accesses Attempted %lld", accesses_attempted);
         LogMessage("Fraction of accesses skipped %f", 1 - (accesses_observed * 1.0 / accesses_attempted));
         Event::GetPool()->WriteAll(KnobOutputFile.Value());
         end = read_tsc() - start;
-        cerr << "Time taken to write " << end << endl;
+        cout << "Time taken to write " << end << endl;
     };
 }
 
@@ -96,10 +105,10 @@ VOID Fini(INT32 code, VOID *v)
 /* ===================================================================== */
 INT32 Usage()
 {
-    cerr << "This tool represents a memoroy simulator.\n"
+    cout << "This tool represents a memoroy simulator.\n"
             "\n";
 
-    cerr << KNOB_BASE::StringKnobSummary() << endl;
+    cout << KNOB_BASE::StringKnobSummary() << endl;
     return -1;
 }
 

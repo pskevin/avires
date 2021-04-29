@@ -18,6 +18,8 @@ namespace Event
     {
         LogPoint();
         WriteAddress(dir);
+        LogPoint();
+
         // Open all files
         Type *type;
         for (auto const &tpair : types_)
@@ -32,7 +34,7 @@ namespace Event
             {
                 sources[spair.second] = spair.first;
             }
-            
+
             string file_name = dir + "/" + type->ID() + ".out";
             ofstream file(file_name.c_str(), ios::out | ios::trunc);
             if (file.is_open())
@@ -72,12 +74,33 @@ namespace Event
 
     void Pool::WriteAddress(string dir)
     {
-        ofstream file((dir + "/addrs.out").c_str(), ios::out | ios::trunc);
-        file << "vaddr,paddr" << endl;
-        for (Address *addr : addrs_)
+        LogPoint();
+        string file_name = dir + "/addrs.out";
+        ofstream file(file_name.c_str(), ios::out | ios::trunc);
+        if (file.is_open())
         {
-            file << addr->Virtual() << "," << addr->Physical() << endl;
+            file << "vaddr,paddr" << endl;
+
+            LogMessage("Size %lld", addrs_.size());
+            for (Address *addr : addrs_)
+            {
+                if (addr != NULL)
+                {
+
+                    file << addr->Virtual() << "," << addr->Physical() << endl;
+                }
+                else
+                {
+                    LogPoint();
+                }
+            }
+            LogPoint();
+        }
+        else
+        {
+            cerr << "Cannot open file " << file_name << endl;
         }
         file.close();
+        LogPoint();
     }
 }
