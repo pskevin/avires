@@ -1,6 +1,7 @@
 # macOS
 .DS_Store
 
+# Editor
 .vscode
 
 # All object binaries
@@ -21,3 +22,6 @@
 
 # Logs
 *.log
+
+#Python
+*/__pycache__/*
