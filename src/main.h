@@ -12,6 +12,7 @@
 #include "./subsystem/tlb/two_level.h"
 #include "./subsystem/cache/l1d.h"
 #include "./subsystem/memory/fcfs.h"
+#include "./subsystem/memory/linux.h"
 
 #include <cstdint>
 #include <string>
@@ -27,6 +28,13 @@ KNOB<string> KnobOutputFile(
     "pintool",
     "o",
     "",
+    "specify stats output file");
+
+KNOB<int> KnobMemoryController(
+    KNOB_MODE_WRITEONCE,
+    "pintool",
+    "memory-controller",
+    "0",
     "specify stats output file");
 
 KNOB<uint64_t> KnobSkipEveryNth(

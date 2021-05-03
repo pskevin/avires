@@ -1,53 +1,86 @@
-#include "memsim.h"
+#ifndef MEMSIM_SUBSYSTEM_MEMORY_LINUX_H
+#define MEMSIM_SUBSYSTEM_MEMORY_LINUX_H
+
 #include "pin.H"
 
-#define NR_PAGES		32
-#define KSWAPD_INTERVAL		S(1)	// In ns
+#include "../include/models/page.h"
+#include "../include/controllers/memory.h"
+#include "../include/models/tlb_entry.h"
+#include "../include/utils/macros.h"
 
-struct page {
-  struct page	*next, *prev;
-  uint64_t	framenum;
-  struct pte	*pte;
-};
+#include "../include/models/event.h"
+#include "../include/events/access.h"
+#include "../include/events/execution_time.h"
+#include "../include/events/simulated_time.h"
 
-struct fifo_queue {
-  struct page	*first, *last;
-  size_t	numentries;
-};
+#define NR_PAGES 32
+#define KSWAPD_INTERVAL S(1) // In ns
+
+typedef struct FifoNode
+{
+    struct FifoNode *next, *prev;
+    uint64_t framenum;
+    PageTableEntry *pte;
+} node;
+
+typedef struct FifoQueue
+{
+    node *first, *last;
+    size_t numentries;
+} queue;
 
 
-class LinuxMemoryManager: public MemoryManager {
-  public:
-    void pagefault(uint64_t addr, bool readonly);
-    void init(MemorySimulator* sim);
-    void kswapd(void *arg);
-    void shutdown();
+namespace Memory
+{
 
-    LinuxMemoryManager(enum pagetypes pt) : pt_(pt) {
-      fastmem_pages = FASTMEM_SIZE / page_size(pt);
-      slowmem_pages = SLOWMEM_SIZE / page_size(pt);
+    class Linux : public Controller
+    {
+    public:
+        void PageFault(Address *addr, bool readonly);
+        PageTableEntry *GetCR3();
+
+        Linux(Page::Type pt) : pt_(pt)
+        {
+            fast_pages_ = Size[Type::Fast] / Page::Size[pt];
+            slow_pages_ = Size[Type::Slow] / Page::Size[pt];
+
+            access = Event::GetPool()->Find<Event::Access>();
+            execution_time = Event::GetPool()->Find<Event::ExecutionTime>();
+            simulated_time = Event::GetPool()->Find<Event::SimulatedTime>();
+
+            PIN_MutexInit(&global_lock);
+            init();
+        };
+        void shutdown();
+        void kswapd(void *arg);
+
+    private:
+        Event::Type* access;
+        Event::ExecutionTime *execution_time;
+        Event::SimulatedTime *simulated_time;
+
+        void init();
+        void EnqueueFifo(queue *queue, node *entry);
+        node *DequeueFifo(queue *queue);
+        void ShrinkCaches(queue *pages_active, queue *pages_inactive);
+        void ExpandCaches(queue *pages_active, queue *pages_inactive);
+
+        uint64_t GetPhysicalPage(Address *addr, PageTableEntry *pte);
+        PageTableEntry* AllocatePageTables(Address *addr, Page::Type pt);
+        PageTableEntry pml4_[512]; // Top-level page table (we only emulate one process)
+        queue pages_active[2], pages_inactive[2], pages_free[2];
+        Page::Type pt_;
+        uint64_t fast_pages_, slow_pages_;
+
+        PIN_MUTEX global_lock;
+        PIN_TLS_INDEX in_kswapd;
+        PIN_THREAD_UID threadUID;
+        volatile BOOL thread_should_terminate;
+        THREADID tid;
+        NATIVE_TID native_tid;
     };
+}
 
-  private:
-    int listnum(struct pte *pte);
-    void enqueue_fifo(struct fifo_queue *queue, struct page *entry);
-    struct page *dequeue_fifo(struct fifo_queue *queue);
-    void shrink_caches(struct fifo_queue *pages_active, struct fifo_queue *pages_inactive);
-    void expand_caches(struct fifo_queue *pages_active, struct fifo_queue *pages_inactive);
-    uint64_t getmem(uint64_t addr, struct pte *pte);
 
-    pte *alloc_ptables(uint64_t addr, enum pagetypes pt);
-    struct pte pml4[512]; // Top-level page table (we only emulate one process)
-    struct fifo_queue pages_active[NMEMTYPES], pages_inactive[NMEMTYPES], pages_free[NMEMTYPES];
-    enum pagetypes pt_;
-    uint64_t fastmem_pages, slowmem_pages;
 
-    PIN_MUTEX global_lock;
-    MemorySimulator* sim_;
-    PIN_TLS_INDEX in_kswapd; 
-
-    PIN_THREAD_UID threadUID;
-    volatile BOOL thread_should_terminate;
-    THREADID tid;
-    NATIVE_TID native_tid;
-};
+#endif

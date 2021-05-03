@@ -87,6 +87,9 @@ VOID Fini(INT32 code, VOID *v)
 {
     end = read_tsc() - start;
     cout << "End-to-End exection time - " << end << endl;
+
+    cout << "Total Accesses Observed " << accesses_observed << endl;
+
     if (!KnobOutputFile.Value().empty())
     {
         cout << "Writing observed values." << endl;
@@ -132,7 +135,23 @@ int main(int argc, char *argv[])
     LogPoint();
     Cache::L1D *cache = new Cache::L1D();
     LogPoint();
-    Memory::FirstComeFirstServe *mem = new Memory::FirstComeFirstServe(Page::Type::Base);
+    
+    Memory::Controller *mem;
+    switch (KnobMemoryController)
+    {
+        case 0:
+            LogMessage("Running with Simple Memory Manager");
+            mem = new Memory::FirstComeFirstServe(Page::Type::Base);
+            break;
+        case 1:
+            LogMessage("Running with Linux Memory Manager");
+            mem = new Memory::Linux(Page::Type::Base);
+            break;
+
+    default:
+        return 1;
+        break;
+    }
     LogPoint();
     memsim = new MemorySimulator(mem, tlb, cache);
     LogPoint();
