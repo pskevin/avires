@@ -1,5 +1,7 @@
 #include "gups.h"
+#include "tsc.h"
 #include "log.h"
+
 
 #include <stdio.h>
 #include <stdint.h>
@@ -24,7 +26,7 @@ static void *gups(void *args)
 {
     Context *ctx = (Context *)args;
     uint64_t *region = (uint64_t *)(ctx->region);
-    uint64_t index, seed;
+    uint64_t index, seed, tmp;
 
     for (uint64_t i = 0; i < ctx->num_updates; i++)
     {
@@ -53,7 +55,8 @@ static void *gups(void *args)
         }
 
 
-        uint64_t tmp = region[index] + i;
+        tmp = region[index];
+        tmp = tmp + i;
         // uint64_t tmp = *(region+index) + i;
         if (ACCESS_TYPE == WRITE)
         {
@@ -64,6 +67,7 @@ static void *gups(void *args)
 
 int main(int argc, char **argv)
 {
+    uint64_t start_time = read_tsc();
     
     if (argc != 7)
     {
@@ -79,7 +83,6 @@ int main(int argc, char **argv)
     }
 
     printf("Starting GUPS\n");
-    // asm("ud2");
 
     int num_threads, exponent;
     uint64_t num_updates, region_size, region_per_thread;
@@ -136,7 +139,7 @@ int main(int argc, char **argv)
     
     // Initializing thread data
     Context **ctxs = (Context **)malloc(num_threads * sizeof(Context *));
-    pthread_t threads[MAX_THREADS];
+    // pthread_t threads[MAX_THREADS];
 
     for (int i = 0; i < num_threads; ++i)
     {
@@ -154,16 +157,18 @@ int main(int argc, char **argv)
         ctxs[i]->hotset_start = (region_per_thread * i) + hotset_start;
         ctxs[i]->hotset_size = hotset_size;
         ctxs[i]->access_probability = access_probability;
-        int r = pthread_create(&threads[i], NULL, gups, (void *)ctxs[i]);
-        assert(r == 0);
+        // int r = pthread_create(&threads[i], NULL, gups, (void *)ctxs[i]);
+        // assert(r == 0);
     }
 
-    // Wait for worker threads
-    for (int i = 0; i < num_threads; i++)
-    {
-        int r = pthread_join(threads[i], NULL);
-        assert(r == 0);
-    }
+    gups((void *)ctxs[0]);
+
+    // // Wait for worker threads
+    // for (int i = 0; i < num_threads; i++)
+    // {
+    //     int r = pthread_join(threads[i], NULL);
+    //     assert(r == 0);
+    // }
 
     for (int i = 0; i < num_threads; i++)
     {
@@ -173,5 +178,8 @@ int main(int argc, char **argv)
 
     munmap(region, region_size);
     printf("GUPS finished safely.\n");
+
+    uint64_t end_time = read_tsc() - start_time;
+    printf("Time taken: %lld\n", end_time);
     return 0;
 }
