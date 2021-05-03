@@ -17,9 +17,9 @@ if __name__ == '__main__':
     patterns = ["rndm", "seq", "hotset"]
     gups_objs = globals.gups_obj(["rndm", "seq", "rndm"], ["write"])
     gups_opts = [
-        "1 1000000 30 0 0 0", 
-        "1 1000000 30 0 0 0",
-        "1 1000000 30 40 20 50"
+        "1 10000 30 0 0 0", 
+        "1 10000 30 0 0 0",
+        "1 10000 30 40 20 50"
     ]
 
     pin_obj = globals.pin_obj()
@@ -27,4 +27,4 @@ if __name__ == '__main__':
 
     for exp_name, gups_obj, gups_opt in zip(patterns, gups_objs, gups_opts):
         out_dir = globals.out_dir(exp.root, exp_name)
-        exp.run(pin_obj, gups_obj, out_dir, app_opts=gups_opt)
+        exp.run(pin_obj, gups_obj, pin_opts=out_dir, app_opts=gups_opt)

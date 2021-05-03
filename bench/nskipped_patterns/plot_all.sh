@@ -1,9 +1,9 @@
 # ./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/takes-100-th/ --region-start=140087386791936 --region-size=1073741824
 # ./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/takes-10-th/ --region-start=140657550966784 --region-size=1073741824
-./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/takes-4-th/ --region-start=140251806744576 --region-size=1073741824
+# ./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/takes-4-th/ --region-start=140251806744576 --region-size=1073741824
 # ./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/takes-2-th/ --region-start=140485631807488 --region-size=1073741824
 # ./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/skips-4-th/ --region-start=140038850437120 --region-size=1073741824
-./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/skips-1-th/ --region-start=140053417287680 --region-size=1073741824
+# ./plot/access_patterns.py --path=/root/memsim/bench/nskipped_patterns/skips-1-th/ --region-start=140053417287680 --region-size=1073741824
 
 
 # [root@localhost bench]# ./run/nskipped_patterns.py
