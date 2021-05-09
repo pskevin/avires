@@ -10,6 +10,7 @@
 #include "./include/utils/macros.h"
 
 #include "./include/models/event.h"
+#include "./include/events/access.h"
 #include "./include/events/execution_time.h"
 #include "./include/events/simulated_time.h"
 
@@ -23,6 +24,7 @@ class MemorySimulator
 private:
     Event::ExecutionTime *execution_time;
     Event::SimulatedTime *simulated_time;
+    Event::Access *access;
 
     Memory::Controller *mem_;
     TLB::Controller *tlb_;
@@ -39,6 +41,7 @@ public:
         TLB::Controller *tlb,
         Cache::Controller *cache) : mem_(mem), tlb_(tlb), cache_(cache), cr3_(mem->GetCR3())
     {
+        access = Event::GetPool()->Find<Event::Access>();
         execution_time = Event::GetPool()->Find<Event::ExecutionTime>();
         simulated_time = Event::GetPool()->Find<Event::SimulatedTime>();
     }

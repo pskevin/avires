@@ -25,9 +25,9 @@ namespace Cache
 
         typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) RRCache;
 
-        const static unsigned int CacheSize = 512;
-        const static unsigned int LineSize = 16;
-        const static unsigned int Associativity = 4;
+        const static unsigned int CacheSize = KB(32);
+        const static unsigned int LineSize = 64;
+        const static unsigned int Associativity = 8;
 
         L1D()
         {

@@ -75,6 +75,7 @@ void MemorySimulator::Access(Address *addr, uint64_t size)
             source += "_write";
         }
         
+        access->Observe(source, Event::Access::Hit);
         simulated_time->Observe(source, Memory::TimeTo[operation][type]);
     }
 

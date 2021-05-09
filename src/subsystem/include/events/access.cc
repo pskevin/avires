@@ -22,5 +22,9 @@ namespace Event
                 Type::Observe(source, 0);
             }
         }
+        else
+        {
+            LogMessage("Dummy %s", source);
+        }
     }
 }

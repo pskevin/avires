@@ -23,11 +23,11 @@ namespace TLB
     {
     public:
         // Constants
-        const static unsigned int L1_GIGA_ENTRIES = 1;
-        const static unsigned int L1_HUGE_ENTRIES = 4;
-        const static unsigned int L1_BASE_ENTRIES = 8;
-        const static unsigned int L2_GIGA_ENTRIES = 4;
-        const static unsigned int L2_HUGE_BASE_ENTRIES = 8;
+        const static unsigned int L1_GIGA_ENTRIES = 4;
+        const static unsigned int L1_HUGE_ENTRIES = 32;
+        const static unsigned int L1_BASE_ENTRIES = 64;
+        const static unsigned int L2_GIGA_ENTRIES = 16;
+        const static unsigned int L2_HUGE_BASE_ENTRIES = 1536;
 
         Entry *Lookup(Address *addr, int *level);
         void Insert(Address *addr, unsigned int level);

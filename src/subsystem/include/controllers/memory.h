@@ -49,7 +49,7 @@ namespace Memory
     {
         map<Type, uint64_t> size;
 
-        size[Type::Fast] = MB(100);
+        size[Type::Fast] = MB(128);
         size[Type::Slow] = GB(100);
 
         return size;
