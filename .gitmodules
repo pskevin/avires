@@ -1,0 +1,3 @@
+[submodule "apps/silo"]
+	path = apps/silo
+	url = git@github.com:stephentu/silo.git
