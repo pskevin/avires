@@ -113,7 +113,8 @@ allocator::Initialize(size_t ncpus, size_t maxpercore)
   std::cerr << "allocator::Initialize()" << std::endl
             << "  hugepgsize: " << hugepgsize << std::endl
             << "  use MADV_WILLNEED: " << UseMAdvWillNeed() << std::endl
-            << "  mmap() region [" << x << ", " << endpx << ")" << std::endl;
+            << "  mmap() region [" << (uintptr_t) x << ", " << (uintptr_t) endpx << ")" << std::endl;
+            // << "  mmap() region [" << x << ", " << endpx << ")" << std::endl;
 
   g_memstart = reinterpret_cast<void *>(util::iceil(uintptr_t(x), hugepgsize));
   g_memend = reinterpret_cast<char *>(g_memstart) + (g_ncpus * g_maxpercore);
@@ -127,8 +128,8 @@ allocator::Initialize(size_t ncpus, size_t maxpercore)
       reinterpret_cast<char *>(g_memstart) + (i * g_maxpercore);
     g_regions[i].region_end   =
       reinterpret_cast<char *>(g_memstart) + ((i + 1) * g_maxpercore);
-    std::cerr << "cpu" << i << " owns [" << g_regions[i].region_begin
-              << ", " << g_regions[i].region_end << ")" << std::endl;
+    std::cerr << "cpu" << i << " owns [" << (uintptr_t) g_regions[i].region_begin
+              << ", " << (uintptr_t) g_regions[i].region_end << ")" << std::endl;
     ALWAYS_ASSERT(g_regions[i].region_begin < g_regions[i].region_end);
     ALWAYS_ASSERT(g_regions[i].region_begin >= x);
     ALWAYS_ASSERT(g_regions[i].region_end <= endpx);
