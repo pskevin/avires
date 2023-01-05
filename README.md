@@ -1,5 +1,6 @@
-# memsim
-Memsim: An Attempt at Simulating Memory Hierarchies
+# Avires
+Avires: Simulating Tiered Memory Architectures
+using Dynamic Binary Instrumentation
 
 Experimentation Setup:
 1. Install Intel PIN tool and add to system path (following the instructions at https://software.intel.com/sites/landingpage/pintool/docs/98275/Pin/html/index.html#BuildingOutOfKit)
